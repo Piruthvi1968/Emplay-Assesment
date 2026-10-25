@@ -57,11 +57,16 @@ class SearchCfg(BaseModel):
     enable_pinning: bool = True
 
 
+Effort = Literal["low", "medium", "high", "xhigh", "max"]
+
+
 class LLMCfg(BaseModel):
-    timeout_s: float = 60
+    timeout_s: float = 120
     max_retries: int = 2
-    max_tokens: int = 2048
-    temperature: float = 0
+    max_tokens: int = 16000
+    effort: Effort = "medium"
+    effort_fast: Effort = "low"
+    prices_per_mtok: dict[str, tuple[float, float]] = Field(default_factory=dict)
 
 
 class AgentsCfg(BaseModel):

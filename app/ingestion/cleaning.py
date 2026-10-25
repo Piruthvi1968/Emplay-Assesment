@@ -28,8 +28,13 @@ _CHAR_MAP = str.maketrans(
 )
 
 _LIST_ITEM = re.compile(r"^(\d{1,3}[.)]|[a-zA-Z][.)]|\([a-zA-Z0-9]{1,3}\)|[-*])\s+")
+_LABEL_VALUE = re.compile(r"^[A-Z][\w /&()'-]{1,40}: \S")  # "Closing Date: 07/09/2024 ..." starts its own line
 _NUMBERED_HEADING = re.compile(r"^(\d{1,2}(\.\d{1,2})*\.?|section\s+\d+[\w.]*|article\s+[\w.]+)\s+[A-Za-z]", re.I)
 _SENTENCE_END = re.compile(r"[.:;?!]\"?$")
+_DATE_START = re.compile(
+    r"^(\d{1,2}[-/](\d{1,2}|[A-Za-z]{3})[-/]\d{2,4}"  # 27-JUN-2024, 06/10/2024
+    r"|(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? \d{1,2},? \d{4})\b"  # July 9, 2024
+)
 _PAGE_LABEL = re.compile(r"^\s*page\s+\d+\s*(of|\|)\s*\d+\s*$", re.I)
 
 
@@ -107,6 +112,23 @@ def _merge_text_blocks(blocks: list[Block]) -> list[Block]:
     return [merged] + [b for b in blocks if b.kind != "text" and b.text.strip()]
 
 
+def _label_value_pair(prev: str, prev_raw: str, line: str) -> str | None:
+    """Forms print a label and its value on separate lines; rejoin them as 'Label: value'.
+
+    'Solicitation Due' + '27-JUN-2024 14:00:00' -> 'Solicitation Due: 27-JUN-2024 14:00:00'
+    'Initial Term:' + '3'                      -> 'Initial Term: 3'
+    Only an unjoined previous line qualifies, so wrapped sentences are never split into pairs.
+    """
+    if not prev or prev != prev_raw or is_heading(prev) or _LIST_ITEM.match(line) or is_heading(line):
+        return None
+    if prev.endswith(":") and len(line.split()) <= 4 and not _LABEL_VALUE.match(line):
+        return f"{prev} {line}"
+    words = prev.split()
+    if _DATE_START.match(line) and len(words) <= 6 and not _SENTENCE_END.search(prev) and not prev[-1].isdigit():
+        return f"{prev}: {line}"
+    return None
+
+
 def join_broken_lines(text: str) -> str:
     """Re-join lines that the PDF layout broke, keeping headings, list items and paragraphs apart.
 
@@ -125,6 +147,11 @@ def join_broken_lines(text: str) -> str:
             out.append("")
             prev_raw = ""
             continue
+        pair = _label_value_pair(out[-1] if out else "", prev_raw, line)
+        if pair:
+            out[-1] = pair
+            prev_raw = ""  # the pair is complete: never glue the next label onto it
+            continue
         can_join = (
             out
             and out[-1]
@@ -133,6 +160,7 @@ def join_broken_lines(text: str) -> str:
             and not is_heading(prev_raw)
             and not is_heading(line)
             and not _LIST_ITEM.match(line)
+            and not _LABEL_VALUE.match(line)
             and not line.startswith("|")
             and not prev_raw.startswith("|")
             and (len(prev_raw) >= 60 or (len(prev_raw.split()) <= 3 and len(line.split()) <= 3) or line[0].islower())

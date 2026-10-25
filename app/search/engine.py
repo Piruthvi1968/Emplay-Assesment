@@ -8,7 +8,7 @@ import time
 from typing import Literal
 
 from app.config import Settings, get_settings
-from app.models import Chunk, QueryPlan, SearchHit, SubEvidence, SubQuery
+from app.models import BidInfo, Chunk, QueryPlan, SearchHit, SubEvidence, SubQuery
 from app.search.bm25_index import BM25Index
 from app.search.embedder import Embedder
 from app.search.fusion import reciprocal_rank_fusion
@@ -21,6 +21,8 @@ SearchMode = Literal["vector", "hybrid", "hybrid_rerank"]
 
 _RAW_TOKEN = re.compile(r"[A-Za-z0-9]+(?:[-_/.#][A-Za-z0-9]+)*")
 _MAX_PINNED = 10
+_CATALOG_TITLE = re.compile(r"^(?:solicitation )?title:\s*(.+)$", re.I | re.M)
+_CATALOG_ISSUER = re.compile(r"^(?:issuing organization|agency|organization|issued by):\s*(.+)$", re.I | re.M)
 
 
 def id_like_tokens(text: str) -> list[str]:
@@ -40,7 +42,7 @@ def id_like_tokens(text: str) -> list[str]:
     return list(dict.fromkeys(out))
 
 
-def _body(chunk: Chunk) -> str:
+def chunk_body(chunk: Chunk) -> str:
     """Chunk text without the '[Bid | doc | file | page | section]' context line."""
     text = chunk.text
     return text.split("\n", 1)[1] if text.startswith("[") and "\n" in text else text
@@ -77,6 +79,27 @@ class SearchEngine:
     def chunk_store(self) -> ChromaChunkStore:
         """The ChunkStore the ingestion pipeline writes into."""
         return ChromaChunkStore(self.store, self.embedder)
+
+    def catalog(self) -> list[BidInfo]:
+        """Title and issuer per indexed bid, read from 'Title:' / 'Issuing Organization:' lines when present."""
+        out = []
+        for bid_id in self.bids():
+            chunks = sorted(
+                (c for c in self._chunks.values() if c.meta.bid_id == bid_id),
+                key=lambda c: (c.meta.doc_type != "bid_page", c.meta.chunk_id),
+            )
+            text = "\n".join(chunk_body(c) for c in chunks[:20])
+            title = _CATALOG_TITLE.search(text)
+            issuer = _CATALOG_ISSUER.search(text)
+            out.append(
+                BidInfo(
+                    bid_id=bid_id,
+                    title=title.group(1).strip() if title else None,
+                    issuer=issuer.group(1).strip() if issuer else None,
+                    files=sorted({c.meta.file_name for c in chunks}),
+                )
+            )
+        return out
 
     def bids(self) -> list[str]:
         return sorted({c.meta.bid_id for c in self._chunks.values()})
@@ -128,7 +151,9 @@ class SearchEngine:
         else:
             candidates = [cid for cid, _ in fused[: self.cfg.rerank_candidates]]
             if self.cfg.enable_pinning:
-                candidates += [cid for cid in self._pinned(texts, allow) if cid not in candidates]
+                # An exact ID match is the strongest lexical evidence: pinned chunks lead the retrieval order.
+                pinned = self._pinned(texts, allow)
+                candidates = pinned + [cid for cid in candidates if cid not in pinned]
             scores = self.reranker.score(sq.question, [self._chunks[cid].text for cid in candidates])
             by_score = dict(zip(candidates, scores, strict=True))
             order = sorted(candidates, key=lambda cid: -by_score[cid])
@@ -166,7 +191,7 @@ class SearchEngine:
         ]  # ordered, so the cap keeps the same chunks every run
         pinned: list[str] = []
         for tok in tokens:
-            matches = [c.meta.chunk_id for c in self._chunks.values() if allow(c) and tok in _body(c).lower()]
+            matches = [c.meta.chunk_id for c in self._chunks.values() if allow(c) and tok in chunk_body(c).lower()]
             if len(matches) <= _MAX_PINNED:
                 pinned += [m for m in matches if m not in pinned]
         return pinned[:_MAX_PINNED]

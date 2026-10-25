@@ -2,44 +2,15 @@
 
 from __future__ import annotations
 
-import hashlib
-import math
 from pathlib import Path
 
 import pytest
 
 from app.config import Settings
 from app.models import Chunk, ChunkMeta, QueryPlan, SubQuery
-from app.search.bm25_index import tokenize
 from app.search.engine import SearchEngine
 from app.search.vector_store import ChromaChunkStore, VectorStore
-
-DIM = 64
-
-
-class FakeEmbedder:
-    """Hashed bag-of-words vectors: deterministic, and similar texts get similar vectors."""
-
-    def _vec(self, text: str) -> list[float]:
-        v = [0.0] * DIM
-        for tok in tokenize(text):
-            v[int(hashlib.md5(tok.encode()).hexdigest(), 16) % DIM] += 1.0
-        norm = math.sqrt(sum(x * x for x in v)) or 1.0
-        return [x / norm for x in v]
-
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [self._vec(t) for t in texts]
-
-    def embed_query(self, text: str) -> list[float]:
-        return self._vec(text)
-
-
-class FakeReranker:
-    """Score = number of query tokens found in the text."""
-
-    def score(self, query: str, texts: list[str]) -> list[float]:
-        q = set(tokenize(query))
-        return [float(len(q & set(tokenize(t)))) - 0.5 for t in texts]
+from tests.fakes import FakeEmbedder, FakeReranker
 
 
 def _chunk(cid: str, bid: str, doc_type: str, text: str, addendum: int | None = None) -> Chunk:

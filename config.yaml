@@ -22,7 +22,9 @@ search:
   rrf_k: 60
   rerank_candidates: 10          # how many fused results go to the cross-encoder (10 vs 20: same recall, half the latency)
   rerank_model: Xenova/ms-marco-MiniLM-L-12-v2   # chosen by eval over L-6, jina tiny/turbo, bge-reranker-base
-  rerank_fusion: false           # true = final order is RRF(retrieval order, rerank order); tested, lower MRR
+  rerank_fusion: true            # final order = RRF(retrieval order, rerank order): the LLM reads the top 3-5,
+                                 # so Recall@3/5 matters more than MRR; protects label/value data (contacts)
+                                 # that the cross-encoder scores poorly
   top_k_single: 5                # final chunks for a single sub-query
   top_k_multi: 3                 # per sub-query when there are several
   addendum_k_single: 2
@@ -32,10 +34,14 @@ search:
   enable_pinning: true           # exact ID-token matches always reach the re-ranker
 
 llm:
-  timeout_s: 60
-  max_retries: 2                 # transport / bad-JSON retries per call
-  max_tokens: 2048
-  temperature: 0
+  timeout_s: 120
+  max_retries: 2                 # SDK retries for timeouts, 429 and 5xx
+  max_tokens: 16000              # covers adaptive thinking + the JSON answer
+  effort: medium                 # strong model (LLM_MODEL); thinking depth and token spend
+  effort_fast: low               # fast model (LLM_MODEL_FAST)
+  prices_per_mtok:               # USD per million tokens [input, output], for the per-run cost estimate
+    claude-sonnet-5-5: [2.00, 10.00]
+    claude-haiku-5-5: [0.10, 0.50]
 
 agents:
   max_validation_retries: 2

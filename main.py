@@ -7,7 +7,7 @@ import logging
 import sys
 from pathlib import Path
 
-from app.config import get_settings
+from app.runtime import Runtime
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -48,31 +48,26 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _bid_folders(args: argparse.Namespace) -> list[Path]:
+def _bid_folders(runtime: Runtime, args: argparse.Namespace) -> list[Path]:
     if args.all:
-        data_dir = get_settings().paths.data_dir
-        return sorted(p for p in data_dir.iterdir() if p.is_dir())
-    folder = Path(args.bid)
-    if not folder.is_dir():
-        raise SystemExit(f"Not a folder: {folder}")
-    return [folder]
+        return runtime.bid_folders()
+    try:
+        return [runtime.resolve_folder(args.bid)]
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 def cmd_index(args: argparse.Namespace) -> int:
-    from app.ingestion.pipeline import ingest_folder
-    from app.search.engine import SearchEngine
-
-    settings = get_settings()
-    engine = SearchEngine.from_settings(settings)
-    for folder in _bid_folders(args):
-        r = ingest_folder(folder, engine.chunk_store(), settings, force=args.force)
+    runtime = Runtime.create()
+    for folder in _bid_folders(runtime, args):
+        r = runtime.index(folder, force=args.force)
         print(
             f"{r.bid_id}: indexed={len(r.files_indexed)} skipped={len(r.files_skipped)} "
             f"failed={len(r.files_failed)} chunks_added={r.chunks_added}"
         )
         for w in r.warnings:
             print(f"  warning: {w}")
-    print(f"index now holds {engine.store.count()} chunks")
+    print(f"index now holds {len(runtime.engine.chunks())} chunks")
     return 0
 
 
@@ -93,10 +88,41 @@ def cmd_search(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ask(args: argparse.Namespace) -> int:
+    from app.llm_client import LLMError
+    from app.logging_utils import TraceLogger
+
+    trace = TraceLogger()
+    try:
+        response = Runtime.create().ask(args.question, trace)
+    except LLMError as exc:
+        raise SystemExit(str(exc)) from exc
+    print(f"intent: {response.intent}\n\n{response.answer}\n")
+    for i, src in enumerate(response.citations, start=1):
+        where = f"p.{src.page}" if src.page is not None else (src.section or "")
+        print(f'[{i}] {src.file} {where}\n    "{src.quote[:200]}"')
+    calls = [e["llm"] for e in trace.events if e["step"] == "llm_call"]
+    print(
+        f"\nLLM calls: {len(calls)}, tokens in/out: {sum(c['in_tokens'] for c in calls)}/"
+        f"{sum(c['out_tokens'] for c in calls)}"
+    )
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    uvicorn.run("app.api.server:app", host=args.host, port=args.port)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    for noisy in ("httpx", "chromadb", "fastembed", "huggingface_hub"):
+    for noisy in ("httpx", "httpx2", "chromadb", "fastembed", "huggingface_hub"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] in ("--bid", "--all"):  # the brief's one-command form: main.py --bid ./data/Bid1
+        argv = ["extract", *argv]
     args = build_parser().parse_args(argv)
     if args.command == "index":
         return cmd_index(args)
@@ -106,6 +132,10 @@ def main(argv: list[str] | None = None) -> int:
         from eval.run_eval import main as run_eval
 
         return run_eval()
+    if args.command == "ask":
+        return cmd_ask(args)
+    if args.command == "serve":
+        return cmd_serve(args)
     print(f"'{args.command}' is not implemented yet.", file=sys.stderr)
     return 1
 

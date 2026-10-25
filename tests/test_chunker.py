@@ -70,6 +70,18 @@ def test_heading_rules() -> None:
 def test_cleaning_joins_fragments_and_fixes_emails() -> None:
     assert join_broken_lines("Questions\nDue\n(Closing)\nDate") == "Questions Due (Closing) Date"
     assert join_broken_lines("1.2 Terms\nInitial Term:") == "1.2 Terms\nInitial Term:"
+    form = (
+        "Pre-Proposal Meeting\n10-JUN-2024 14:00:00\nSolicitation Due\n27-JUN-2024 14:00:00\n"
+        "Initial Term:\n3\nRenewal 1:\n1"
+    )
+    assert join_broken_lines(form) == (
+        "Pre-Proposal Meeting: 10-JUN-2024 14:00:00\nSolicitation Due: 27-JUN-2024 14:00:00\n"
+        "Initial Term: 3\nRenewal 1: 1"
+    )
+    wrapped = "The proposal must be delivered to the district office no later than\n27-JUN-2024 at the latest."
+    assert join_broken_lines(wrapped) == wrapped.replace("\n", " ")  # a wrapped sentence is not a label
+    pairs = "Title: Student and Staff Computing Devices for the whole district\nSource ID: SCRIBE"
+    assert join_broken_lines(pairs) == pairs  # label/value lines stay separate
     assert normalize_chars("vendors’ “quote”") == 'vendors\' "quote"'
     assert normalize_chars("a@treasurer.state.md .us") == "a@treasurer.state.md.us"
     assert normalize_chars("b@treasurer.state.\nmd.us") == "b@treasurer.state.md.us"

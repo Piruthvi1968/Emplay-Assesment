@@ -95,6 +95,15 @@ class SearchHit(BaseModel):
     rank: int = 0
 
 
+class BidInfo(BaseModel):
+    """What the planner knows about an indexed bid, read from the index (never hard-coded)."""
+
+    bid_id: str
+    title: str | None = None
+    issuer: str | None = None
+    files: list[str] = Field(default_factory=list)
+
+
 class SubQuery(BaseModel):
     question: str  # standalone question, also used by the re-ranker
     bid_ids: list[str] = Field(default_factory=list)  # [] = all bids
