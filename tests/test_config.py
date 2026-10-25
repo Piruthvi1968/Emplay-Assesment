@@ -1,4 +1,5 @@
 """Settings loading and shared-model sanity checks."""
+
 from app.config import PROJECT_ROOT, load_settings
 from app.models import ChunkMeta
 

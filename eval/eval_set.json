@@ -1,0 +1,441 @@
+[
+  {
+    "id": "q01",
+    "question": "What is the final proposal due date for Bid1 after the addenda?",
+    "bid_id": "Bid1",
+    "type": "due_date_addendum",
+    "expected": [
+      {
+        "file_contains": "Addendum 2",
+        "page": 1,
+        "text_contains": "The new due date for this RFP will be July 9, 2024"
+      },
+      {
+        "file_contains": "BidNet Direct",
+        "page": null,
+        "text_contains": "07/09/2024 03:00 PM EDT"
+      }
+    ]
+  },
+  {
+    "id": "q02",
+    "question": "What was the original solicitation due date and time in the Dallas ISD RFP?",
+    "bid_id": "Bid1",
+    "type": "due_date_original",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 2,
+        "text_contains": "27-JUN-2024 14:00:00"
+      }
+    ]
+  },
+  {
+    "id": "q03",
+    "question": "When do proposals close for the Maryland Dell laptop purchase?",
+    "bid_id": "Bid2",
+    "type": "due_date",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 1,
+        "text_contains": "PROPOSAL DUE DATE and TIME"
+      },
+      {
+        "file_contains": "BidNet Direct",
+        "page": null,
+        "text_contains": "06/10/2024 02:00 PM EDT"
+      }
+    ]
+  },
+  {
+    "id": "q04",
+    "question": "What is 210-BLYZ?",
+    "bid_id": null,
+    "type": "part_number",
+    "expected": [
+      {
+        "file_contains": "Dell_Laptop_Specs",
+        "page": 1,
+        "text_contains": "210-BLYZ"
+      }
+    ]
+  },
+  {
+    "id": "q05",
+    "question": "Which solicitation has PORFP number E20P4600040?",
+    "bid_id": null,
+    "type": "identifier",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 1,
+        "text_contains": "#E20P4600040"
+      },
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 2,
+        "text_contains": "QUESTION for Dell Laptop #E20P4600040"
+      }
+    ]
+  },
+  {
+    "id": "q06",
+    "question": "What is RFP JA-207652 for?",
+    "bid_id": null,
+    "type": "identifier",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 1,
+        "text_contains": "168884 JA-207652 Student and Staff Computing Devices"
+      },
+      {
+        "file_contains": "Addendum 1",
+        "page": 1,
+        "text_contains": "JA-207652 Student and Staff Computing Devices"
+      },
+      {
+        "file_contains": "Addendum 2",
+        "page": 1,
+        "text_contains": "JA-207652 Student and Staff Computing Devices"
+      }
+    ]
+  },
+  {
+    "id": "q07",
+    "question": "Who is the buyer for the Dallas ISD computing devices RFP and what is the buyer's email?",
+    "bid_id": "Bid1",
+    "type": "contact",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 2,
+        "text_contains": "JALZATE@dallasisd.org"
+      }
+    ]
+  },
+  {
+    "id": "q08",
+    "question": "What is the phone number of the agency point of contact for Bid2?",
+    "bid_id": "Bid2",
+    "type": "contact",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 3,
+        "text_contains": "410-260-7533"
+      },
+      {
+        "file_contains": "BidNet Direct",
+        "page": null,
+        "text_contains": "410-260-7533"
+      }
+    ]
+  },
+  {
+    "id": "q09",
+    "question": "How should proposals be submitted to Dallas ISD?",
+    "bid_id": "Bid1",
+    "type": "submission",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 9,
+        "text_contains": "submitted online via our electronic system"
+      },
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 9,
+        "text_contains": "No fax or email submissions will be accepted"
+      }
+    ]
+  },
+  {
+    "id": "q10",
+    "question": "Can I email my bid to the State Treasurer's Office for the laptop purchase?",
+    "bid_id": "Bid2",
+    "type": "submission",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 1,
+        "text_contains": "Bids will not be accepted by email, fax"
+      }
+    ]
+  },
+  {
+    "id": "q11",
+    "question": "What minimum warranty does Dallas ISD require for student Chromebooks and Windows laptops?",
+    "bid_id": "Bid1",
+    "type": "warranty",
+    "expected": [
+      {
+        "file_contains": "Addendum 1",
+        "page": 1,
+        "text_contains": "one-year warranty for student Chromebooks"
+      },
+      {
+        "file_contains": "Addendum 1",
+        "page": 3,
+        "text_contains": "one-year warranty for student Chromebooks"
+      },
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 4,
+        "text_contains": "Warranty: 1-year minimum"
+      },
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 5,
+        "text_contains": "Warranty: 3-year minimum"
+      }
+    ]
+  },
+  {
+    "id": "q12",
+    "question": "How long is the extended warranty on the Dell laptops?",
+    "bid_id": "Bid2",
+    "type": "warranty",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 3,
+        "text_contains": "Dell Limited Hardware Warranty Extended"
+      },
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 3,
+        "text_contains": "3 years following the date of delivery"
+      }
+    ]
+  },
+  {
+    "id": "q13",
+    "question": "Is a Mercury Affidavit required for the Dell laptop bid?",
+    "bid_id": "Bid2",
+    "type": "forms",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 2,
+        "text_contains": "must provide a Mercury Affidavit"
+      },
+      {
+        "file_contains": "Mercury_Affidavit",
+        "page": 1,
+        "text_contains": "MERCURY CONTENT INFORMATION"
+      }
+    ]
+  },
+  {
+    "id": "q14",
+    "question": "Which forms must be attached to the Dallas ISD proposal submission?",
+    "bid_id": "Bid1",
+    "type": "forms",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 33,
+        "text_contains": "W9 Form completed, signed and attached"
+      },
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 33,
+        "text_contains": "MWBE Forms must be completed and attached"
+      }
+    ]
+  },
+  {
+    "id": "q15",
+    "question": "What is the delivery requirement after award for Bid2?",
+    "bid_id": "Bid2",
+    "type": "delivery",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 2,
+        "text_contains": "Delivery within 45 days of Award"
+      }
+    ]
+  },
+  {
+    "id": "q16",
+    "question": "When does Dallas ISD need the devices delivered?",
+    "bid_id": "Bid1",
+    "type": "delivery",
+    "expected": [
+      {
+        "file_contains": "Addendum 1",
+        "page": 1,
+        "text_contains": "starting in September of 2024"
+      },
+      {
+        "file_contains": "Addendum 1",
+        "page": 2,
+        "text_contains": "meet the deadline for the agreed delivery"
+      }
+    ]
+  },
+  {
+    "id": "q17",
+    "question": "Which master contract must vendors hold to bid on the Dell laptop PORFP?",
+    "bid_id": "Bid2",
+    "type": "contract_vehicle",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 1,
+        "text_contains": "Desktop, Laptop and Tablet 2015 Master Contract, 060B5400007"
+      }
+    ]
+  },
+  {
+    "id": "q18",
+    "question": "Can members of a purchasing cooperative buy off the Dallas ISD contract?",
+    "bid_id": "Bid1",
+    "type": "contract_vehicle",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 19,
+        "text_contains": "Educational Purchasing Cooperative of North Texas"
+      },
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 20,
+        "text_contains": "Central Texas Purchasing Alliance (CTPA)"
+      }
+    ]
+  },
+  {
+    "id": "q19",
+    "question": "What processor and memory does the quoted Dell Latitude 5550 have?",
+    "bid_id": "Bid2",
+    "type": "specs_table",
+    "expected": [
+      {
+        "file_contains": "Dell_Laptop_Specs",
+        "page": 1,
+        "text_contains": "Intel Core Ultra 5 125U processor"
+      },
+      {
+        "file_contains": "Dell_Laptop_Specs",
+        "page": 1,
+        "text_contains": "16 GB: 2 x 8 GB, DDR5"
+      }
+    ]
+  },
+  {
+    "id": "q20",
+    "question": "What is the BidNet reference number for the Dallas ISD computing devices solicitation?",
+    "bid_id": "Bid1",
+    "type": "bidnet_only",
+    "expected": [
+      {
+        "file_contains": "BidNet Direct",
+        "page": null,
+        "text_contains": "00004079100"
+      }
+    ]
+  },
+  {
+    "id": "q21",
+    "question": "How long is the Dallas ISD contract term, including renewals?",
+    "bid_id": "Bid1",
+    "type": "term",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 2,
+        "text_contains": "may be extended not to exceed a total of 5 years"
+      }
+    ]
+  },
+  {
+    "id": "q22",
+    "question": "Is there a pre-proposal meeting for Bid1, and is attendance mandatory?",
+    "bid_id": "Bid1",
+    "type": "pre_bid",
+    "expected": [
+      {
+        "file_contains": "JA-207652 Student and Staff Computing Devices FINAL",
+        "page": 2,
+        "text_contains": "A pre-proposal meeting will be held at 2:00 PM CST"
+      },
+      {
+        "file_contains": "BidNet Direct",
+        "page": null,
+        "text_contains": "06/10/2024 03:00 PM EDT"
+      }
+    ]
+  },
+  {
+    "id": "q23",
+    "question": "Where and when must invoices be sent for the Treasurer's Office laptop order?",
+    "bid_id": "Bid2",
+    "type": "payment",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 2,
+        "text_contains": "STOaccountspayable@treasurer.state.md.us"
+      },
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 2,
+        "text_contains": "submitted within 10 days of delivering the equipment"
+      }
+    ]
+  },
+  {
+    "id": "q24",
+    "question": "What is the bid bond amount for Bid1?",
+    "bid_id": "Bid1",
+    "type": "not_found",
+    "expected": []
+  },
+  {
+    "id": "q25",
+    "question": "What changed in Addendum 2 of the Dallas ISD RFP?",
+    "bid_id": "Bid1",
+    "type": "addendum_change",
+    "expected": [
+      {
+        "file_contains": "Addendum 2",
+        "page": 1,
+        "text_contains": "extend the due date of this RFP"
+      }
+    ]
+  },
+  {
+    "id": "q26",
+    "question": "For Bid2, who is the procurement contact, and which affidavit must the contractor provide?",
+    "bid_id": "Bid2",
+    "type": "multi_topic",
+    "expected": [
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 3,
+        "text_contains": "Agency POC Name: Tamaira Hawkins"
+      },
+      {
+        "file_contains": "BidNet Direct",
+        "page": null,
+        "text_contains": "Tamaira Hawkins"
+      },
+      {
+        "file_contains": "PORFP_-_Dell_Laptop_Final",
+        "page": 2,
+        "text_contains": "must provide a Mercury Affidavit"
+      }
+    ]
+  },
+  {
+    "id": "q27",
+    "question": "When is the pre-bid conference for the Dell laptop PORFP?",
+    "bid_id": "Bid2",
+    "type": "not_found",
+    "expected": []
+  }
+]

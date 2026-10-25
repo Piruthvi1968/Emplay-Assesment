@@ -4,6 +4,7 @@ Portal pages such as BidNet are built from <div>s, not <table>s: each field is a
 holding a short label followed by a value. Those pairs are rewritten as "Label: Value" lines so
 the facts stay attached to their labels. All rules are generic (no site-specific class names).
 """
+
 from __future__ import annotations
 
 import re
@@ -13,8 +14,22 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 
 from app.models import Block, ParsedDoc, ParsedPage
 
-_REMOVE_TAGS = ["script", "style", "noscript", "nav", "header", "footer", "svg", "button",
-                "input", "select", "textarea", "iframe", "link", "meta"]
+_REMOVE_TAGS = [
+    "script",
+    "style",
+    "noscript",
+    "nav",
+    "header",
+    "footer",
+    "svg",
+    "button",
+    "input",
+    "select",
+    "textarea",
+    "iframe",
+    "link",
+    "meta",
+]
 _BOILERPLATE = re.compile(r"cookie|consent|gdpr|modal|popup|dialog", re.I)
 _HEADINGS = ["h1", "h2", "h3", "h4", "h5", "h6"]
 _HEADING_MARK = "\u0000H "  # temporary line prefix marking a heading
@@ -106,7 +121,7 @@ def parse_html(path: Path) -> ParsedDoc:
         if ln.startswith(_HEADING_MARK):
             if current:
                 blocks.append(Block(kind="text", text="\n".join(current), heading=heading))
-            heading, current = ln[len(_HEADING_MARK):].strip() or None, []
+            heading, current = ln[len(_HEADING_MARK) :].strip() or None, []
         else:
             current.append(ln)
 

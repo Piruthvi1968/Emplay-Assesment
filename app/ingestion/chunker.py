@@ -2,6 +2,7 @@
 
 Chunks never cross a page boundary, so every chunk cites exactly one physical page.
 """
+
 from __future__ import annotations
 
 import re
@@ -24,8 +25,14 @@ def estimate_tokens(text: str) -> int:
 def doc_label(doc_type: DocType, addendum_number: int | None) -> str:
     if doc_type == "addendum":
         return f"Addendum {addendum_number}" if addendum_number is not None else "Addendum"
-    return {"bid_page": "Bid page", "rfp": "RFP", "specs": "Specs", "affidavit": "Affidavit",
-            "form": "Form", "other": "Document"}[doc_type]
+    return {
+        "bid_page": "Bid page",
+        "rfp": "RFP",
+        "specs": "Specs",
+        "affidavit": "Affidavit",
+        "form": "Form",
+        "other": "Document",
+    }[doc_type]
 
 
 def _units(text: str) -> list[tuple[str, str | None]]:
@@ -77,12 +84,12 @@ def _tail(text: str, overlap_tokens: int) -> str:
     """Last ~overlap_tokens of text, starting at a sentence (or word) boundary."""
     if overlap_tokens <= 0 or estimate_tokens(text) <= overlap_tokens:
         return ""
-    tail = text[-overlap_tokens * 4:]
+    tail = text[-overlap_tokens * 4 :]
     m = _SENTENCE_SPLIT.search(tail)
     if m:
-        return tail[m.end():]
+        return tail[m.end() :]
     space = tail.find(" ")
-    return tail[space + 1:] if space >= 0 else tail
+    return tail[space + 1 :] if space >= 0 else tail
 
 
 def pack_units(units: list[str], target: int, max_tokens: int, overlap: int) -> list[str]:
@@ -158,8 +165,12 @@ def chunk_doc(
                 group_section = section
                 for unit, heading in _units(block.text):
                     if heading is not None and group and estimate_tokens("\n".join(group)) >= min_section:
-                        bodies += [(t, group_section, False) for t in pack_units(
-                            group, cfg.chunk_target_tokens, cfg.chunk_max_tokens, cfg.chunk_overlap_tokens)]
+                        bodies += [
+                            (t, group_section, False)
+                            for t in pack_units(
+                                group, cfg.chunk_target_tokens, cfg.chunk_max_tokens, cfg.chunk_overlap_tokens
+                            )
+                        ]
                         group = []
                     if heading is not None:
                         section = heading
@@ -167,8 +178,12 @@ def chunk_doc(
                             group_section = heading
                     group.append(unit)
                 if group:
-                    bodies += [(t, group_section, False) for t in pack_units(
-                        group, cfg.chunk_target_tokens, cfg.chunk_max_tokens, cfg.chunk_overlap_tokens)]
+                    bodies += [
+                        (t, group_section, False)
+                        for t in pack_units(
+                            group, cfg.chunk_target_tokens, cfg.chunk_max_tokens, cfg.chunk_overlap_tokens
+                        )
+                    ]
 
             for body, sec, is_table in bodies:
                 if len(body.strip()) < _MIN_BODY_CHARS:

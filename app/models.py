@@ -1,4 +1,5 @@
 """Shared Pydantic models passed between ingestion, search, agents, and the API."""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -8,8 +9,6 @@ from pydantic import BaseModel, Field
 DocType = Literal["bid_page", "rfp", "addendum", "specs", "affidavit", "form", "other"]
 FieldValue = str | list[str] | None
 
-
-# ---------------------------------------------------------------- parsing (parser -> cleaning -> chunker)
 
 class Block(BaseModel):
     """A piece of a parsed page: running text or one table (already rendered as Markdown/lines)."""
@@ -32,8 +31,6 @@ class ParsedDoc(BaseModel):
     pages: list[ParsedPage] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
-
-# ---------------------------------------------------------------- ingestion / chunks
 
 class ChunkMeta(BaseModel):
     """Metadata stored with every chunk; used for filtering and citations."""
@@ -91,8 +88,6 @@ class IngestReport(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-# ---------------------------------------------------------------- search
-
 class SearchHit(BaseModel):
     chunk: Chunk
     rrf_score: float = 0.0
@@ -118,8 +113,6 @@ class SubEvidence(BaseModel):
     hits: list[SearchHit] = Field(default_factory=list)
     no_evidence: bool = False
 
-
-# ---------------------------------------------------------------- extraction output
 
 class Source(BaseModel):
     file: str
@@ -159,8 +152,6 @@ class BidRecord(BaseModel):
     validation: dict[str, int] = Field(default_factory=dict)  # passed / failed / not_found counts
     run_info: dict[str, Any] = Field(default_factory=dict)
 
-
-# ---------------------------------------------------------------- Q&A output
 
 class AnswerPart(BaseModel):
     sub_question: str

@@ -14,8 +14,12 @@ class MemoryStore:
         self.chunks.update({c.meta.chunk_id: c for c in chunks})
 
     def delete_file(self, bid_id: str, file_name: str) -> None:
-        self.chunks = {k: c for k, c in self.chunks.items()
-                       if not (c.meta.bid_id == bid_id and c.meta.file_name == file_name)}
+        self.chunks = {
+            k: c for k, c in self.chunks.items() if not (c.meta.bid_id == bid_id and c.meta.file_name == file_name)
+        }
+
+    def count_file(self, bid_id: str, file_name: str) -> int:
+        return sum(c.meta.bid_id == bid_id and c.meta.file_name == file_name for c in self.chunks.values())
 
 
 def _folder(tmp_path: Path) -> Path:
@@ -52,3 +56,7 @@ def test_ingest_labels_incremental_and_errors(tmp_path: Path, settings: Settings
     assert r3.files_indexed == ["Addendum 1 Main.pdf"]
     assert not any(c.meta.file_name == "listing.html" for c in store.chunks.values())
     assert any("April 2, 2025" in c.text for c in store.chunks.values())
+
+    # an emptied store (index deleted, manifest kept) is rebuilt instead of skipped
+    r4 = ingest_folder(folder, MemoryStore(), settings)
+    assert r4.files_skipped == [] and r4.chunks_added > 0

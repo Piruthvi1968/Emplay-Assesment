@@ -1,4 +1,5 @@
 """CLI entry point: index / extract / ask / search / eval / serve."""
+
 from __future__ import annotations
 
 import argparse
@@ -32,7 +33,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--bid", action="append", dest="bids", help="Filter by bid_id (repeatable)")
     p.add_argument("--doc-type", default=None)
     p.add_argument("--top-k", type=int, default=5)
-    p.add_argument("--mode", choices=["vector", "hybrid", "hybrid_rerank"], default="hybrid_rerank")
+    p.add_argument(
+        "--mode",
+        choices=["vector", "hybrid", "hybrid_rerank"],
+        default=None,
+        help="Default: search.default_mode in config.yaml",
+    )
 
     sub.add_parser("eval", help="Retrieval evaluation -> eval/report.md")
 
@@ -53,24 +59,53 @@ def _bid_folders(args: argparse.Namespace) -> list[Path]:
 
 
 def cmd_index(args: argparse.Namespace) -> int:
-    from app.ingestion.pipeline import JsonlChunkStore, ingest_folder
+    from app.ingestion.pipeline import ingest_folder
+    from app.search.engine import SearchEngine
 
     settings = get_settings()
-    store = JsonlChunkStore(settings.paths.index_dir.parent / "chunks")  # replaced by Chroma in step 3
+    engine = SearchEngine.from_settings(settings)
     for folder in _bid_folders(args):
-        r = ingest_folder(folder, store, settings, force=args.force)
-        print(f"{r.bid_id}: indexed={len(r.files_indexed)} skipped={len(r.files_skipped)} "
-              f"failed={len(r.files_failed)} chunks_added={r.chunks_added}")
+        r = ingest_folder(folder, engine.chunk_store(), settings, force=args.force)
+        print(
+            f"{r.bid_id}: indexed={len(r.files_indexed)} skipped={len(r.files_skipped)} "
+            f"failed={len(r.files_failed)} chunks_added={r.chunks_added}"
+        )
         for w in r.warnings:
             print(f"  warning: {w}")
+    print(f"index now holds {engine.store.count()} chunks")
+    return 0
+
+
+def cmd_search(args: argparse.Namespace) -> int:
+    from app.search.engine import SearchEngine
+
+    engine = SearchEngine.from_settings()
+    hits = engine.search(args.query, top_k=args.top_k, bid_ids=args.bids, doc_type=args.doc_type, mode=args.mode)
+    if not hits:
+        print("no hits")
+    for h in hits:
+        m = h.chunk.meta
+        where = f"p.{m.page_number}" if m.page_number is not None else (m.section or "html")
+        score = f"rerank={h.rerank_score:.2f}" if h.rerank_score is not None else f"rrf={h.rrf_score:.4f}"
+        print(f"#{h.rank} [{m.bid_id} | {m.doc_type} | {m.file_name} | {where}] {score}")
+        body = h.chunk.text.split("\n", 1)[-1]  # drop the context prefix line
+        print("   " + body[:300].replace("\n", " ") + ("..." if len(body) > 300 else ""))
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    for noisy in ("httpx", "chromadb", "fastembed", "huggingface_hub"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     args = build_parser().parse_args(argv)
     if args.command == "index":
         return cmd_index(args)
+    if args.command == "search":
+        return cmd_search(args)
+    if args.command == "eval":
+        from eval.run_eval import main as run_eval
+
+        return run_eval()
     print(f"'{args.command}' is not implemented yet.", file=sys.stderr)
     return 1
 

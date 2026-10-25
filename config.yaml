@@ -17,10 +17,12 @@ embedding:
   batch_size: 32
 
 search:
-  candidates_per_list: 20        # top_k per dense / BM25 list
+  default_mode: hybrid_rerank    # vector | hybrid | hybrid_rerank (chosen from the eval results)
+  candidates_per_list: 20       # top_k per dense / BM25 list
   rrf_k: 60
-  rerank_candidates: 20          # how many fused results go to the cross-encoder
-  rerank_model: Xenova/ms-marco-MiniLM-L-6-v2
+  rerank_candidates: 10          # how many fused results go to the cross-encoder (10 vs 20: same recall, half the latency)
+  rerank_model: Xenova/ms-marco-MiniLM-L-12-v2   # chosen by eval over L-6, jina tiny/turbo, bge-reranker-base
+  rerank_fusion: false           # true = final order is RRF(retrieval order, rerank order); tested, lower MRR
   top_k_single: 5                # final chunks for a single sub-query
   top_k_multi: 3                 # per sub-query when there are several
   addendum_k_single: 2

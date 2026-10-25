@@ -1,4 +1,5 @@
 """PDF -> ParsedDoc with PyMuPDF: page text blocks plus tables, one ParsedPage per physical page."""
+
 from __future__ import annotations
 
 import logging

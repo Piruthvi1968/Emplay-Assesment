@@ -2,6 +2,7 @@
 
 Every rule here is a keyword or regex that works for any bid folder. Nothing is bid-specific.
 """
+
 from __future__ import annotations
 
 import re
@@ -67,7 +68,7 @@ def detect_doc_date(first_page_text: str) -> str | None:
     m = _DATE_LABELLED.search(first_page_text)
     candidate = m.group(1) if m else None
     if candidate is None:
-        m = _DATE_ANY.search(first_page_text[:_TOP_CHARS * 3])
+        m = _DATE_ANY.search(first_page_text[: _TOP_CHARS * 3])
         candidate = m.group(0) if m else None
     if candidate is None:
         return None

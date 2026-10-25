@@ -1,4 +1,5 @@
 """Shared fixtures: tiny synthetic PDF/HTML files and isolated settings (no network, no real data)."""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -7,8 +7,9 @@ CFG = IngestionCfg(chunk_target_tokens=100, chunk_max_tokens=150, chunk_overlap_
 
 
 def _doc(*pages: list[Block]) -> ParsedDoc:
-    return ParsedDoc(file_name="Addendum 1 X.pdf",
-                     pages=[ParsedPage(page_number=i + 1, blocks=b) for i, b in enumerate(pages)])
+    return ParsedDoc(
+        file_name="Addendum 1 X.pdf", pages=[ParsedPage(page_number=i + 1, blocks=b) for i, b in enumerate(pages)]
+    )
 
 
 def _chunks(doc: ParsedDoc):
@@ -69,6 +70,6 @@ def test_heading_rules() -> None:
 def test_cleaning_joins_fragments_and_fixes_emails() -> None:
     assert join_broken_lines("Questions\nDue\n(Closing)\nDate") == "Questions Due (Closing) Date"
     assert join_broken_lines("1.2 Terms\nInitial Term:") == "1.2 Terms\nInitial Term:"
-    assert normalize_chars("vendors’ “quote”") == "vendors' \"quote\""
+    assert normalize_chars("vendors’ “quote”") == 'vendors\' "quote"'
     assert normalize_chars("a@treasurer.state.md .us") == "a@treasurer.state.md.us"
     assert normalize_chars("b@treasurer.state.\nmd.us") == "b@treasurer.state.md.us"

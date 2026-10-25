@@ -3,6 +3,7 @@
 Everything tunable lives in the YAML files; secrets and model names come from the environment.
 Use `get_settings()` everywhere; it loads once and caches the result.
 """
+
 from __future__ import annotations
 
 import os
@@ -41,10 +42,12 @@ class EmbeddingCfg(BaseModel):
 
 
 class SearchCfg(BaseModel):
+    default_mode: Literal["vector", "hybrid", "hybrid_rerank"] = "hybrid_rerank"
     candidates_per_list: int = 20
     rrf_k: int = 60
     rerank_candidates: int = 20
     rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    rerank_fusion: bool = False
     top_k_single: int = 5
     top_k_multi: int = 3
     addendum_k_single: int = 2

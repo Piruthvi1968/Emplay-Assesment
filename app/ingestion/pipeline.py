@@ -1,4 +1,5 @@
 """ingest_folder(): label -> parse -> clean -> chunk -> store, with a hash manifest for incremental runs."""
+
 from __future__ import annotations
 
 import hashlib
@@ -21,39 +22,11 @@ SUPPORTED = {".pdf", ".html", ".htm"}
 
 
 class ChunkStore(Protocol):
-    """Where chunks go. Step 3 plugs in the Chroma store; tests use an in-memory one."""
+    """Where chunks go: `ChromaChunkStore` in the app, an in-memory store in tests."""
 
     def upsert_chunks(self, chunks: list[Chunk]) -> None: ...
     def delete_file(self, bid_id: str, file_name: str) -> None: ...
-
-
-class JsonlChunkStore:
-    """Debug store: one JSONL file per bid under <dir>/ (handy for eyeballing chunks)."""
-
-    def __init__(self, directory: Path) -> None:
-        self.directory = directory
-        directory.mkdir(parents=True, exist_ok=True)
-
-    def _path(self, bid_id: str) -> Path:
-        return self.directory / f"{bid_id}.jsonl"
-
-    def _load(self, bid_id: str) -> list[Chunk]:
-        p = self._path(bid_id)
-        if not p.exists():
-            return []
-        return [Chunk.model_validate_json(line) for line in p.read_text(encoding="utf-8").splitlines() if line]
-
-    def _save(self, bid_id: str, chunks: list[Chunk]) -> None:
-        self._path(bid_id).write_text("".join(c.model_dump_json() + "\n" for c in chunks), encoding="utf-8")
-
-    def upsert_chunks(self, chunks: list[Chunk]) -> None:
-        for bid_id in {c.meta.bid_id for c in chunks}:
-            new = {c.meta.chunk_id: c for c in chunks if c.meta.bid_id == bid_id}
-            kept = [c for c in self._load(bid_id) if c.meta.chunk_id not in new]
-            self._save(bid_id, kept + list(new.values()))
-
-    def delete_file(self, bid_id: str, file_name: str) -> None:
-        self._save(bid_id, [c for c in self._load(bid_id) if c.meta.file_name != file_name])
+    def count_file(self, bid_id: str, file_name: str) -> int: ...
 
 
 def sha256_file(path: Path) -> str:
@@ -91,8 +64,9 @@ def parse_file(path: Path, settings: Settings) -> ParsedDoc:
     return clean_doc(doc, settings.ingestion.header_footer_min_repeat)
 
 
-def ingest_folder(folder: Path, store: ChunkStore, settings: Settings | None = None,
-                  force: bool = False) -> IngestReport:
+def ingest_folder(
+    folder: Path, store: ChunkStore, settings: Settings | None = None, force: bool = False
+) -> IngestReport:
     """Index one bid folder. Unchanged files (same sha256) are skipped; one bad file never stops the run."""
     settings = settings or get_settings()
     bid_id = folder.name
@@ -125,7 +99,9 @@ def ingest_folder(folder: Path, store: ChunkStore, settings: Settings | None = N
 
     for p in files:
         digest = sha256_file(p)
-        if not force and known.get(p.name) == digest:
+        # Skip only if the file is unchanged AND its chunks are still in the store (the index
+        # folder may have been deleted while the manifest survived).
+        if not force and known.get(p.name) == digest and store.count_file(bid_id, p.name) > 0:
             report.files_skipped.append(p.name)
             continue
         try:

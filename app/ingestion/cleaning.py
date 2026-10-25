@@ -1,4 +1,5 @@
 """Text cleaning: repeated header/footer removal, character normalisation, and re-joining broken lines."""
+
 from __future__ import annotations
 
 import math
@@ -8,15 +9,26 @@ from collections import Counter
 
 from app.models import Block, ParsedDoc
 
-_CHAR_MAP = str.maketrans({
-    "‘": "'", "’": "'", "“": '"', "”": '"',
-    "–": "-", "—": "-", "−": "-", " ": " ",
-    "•": "-", "●": "-", "▪": "-", "": "-", "·": "-",
-})
+_CHAR_MAP = str.maketrans(
+    {
+        "‘": "'",
+        "’": "'",
+        "“": '"',
+        "”": '"',
+        "–": "-",
+        "—": "-",
+        "−": "-",
+        " ": " ",
+        "•": "-",
+        "●": "-",
+        "▪": "-",
+        "": "-",
+        "·": "-",
+    }
+)
 
 _LIST_ITEM = re.compile(r"^(\d{1,3}[.)]|[a-zA-Z][.)]|\([a-zA-Z0-9]{1,3}\)|[-*])\s+")
-_NUMBERED_HEADING = re.compile(
-    r"^(\d{1,2}(\.\d{1,2})*\.?|section\s+\d+[\w.]*|article\s+[\w.]+)\s+[A-Za-z]", re.I)
+_NUMBERED_HEADING = re.compile(r"^(\d{1,2}(\.\d{1,2})*\.?|section\s+\d+[\w.]*|article\s+[\w.]+)\s+[A-Za-z]", re.I)
 _SENTENCE_END = re.compile(r"[.:;?!]\"?$")
 _PAGE_LABEL = re.compile(r"^\s*page\s+\d+\s*(of|\|)\s*\d+\s*$", re.I)
 
@@ -63,8 +75,7 @@ def remove_repeated_lines(doc: ParsedDoc, min_repeat: float) -> int:
         return 0
     counts: Counter[str] = Counter()
     for p in pages:
-        counts.update({_line_key(ln) for b in p.blocks if b.in_margin
-                       for ln in b.text.splitlines() if ln.strip()})
+        counts.update({_line_key(ln) for b in p.blocks if b.in_margin for ln in b.text.splitlines() if ln.strip()})
     threshold = max(2, math.ceil(min_repeat * len(pages)))
     repeated = {k for k, n in counts.items() if n >= threshold and k}
 
@@ -124,8 +135,7 @@ def join_broken_lines(text: str) -> str:
             and not _LIST_ITEM.match(line)
             and not line.startswith("|")
             and not prev_raw.startswith("|")
-            and (len(prev_raw) >= 60 or (len(prev_raw.split()) <= 3 and len(line.split()) <= 3)
-                 or line[0].islower())
+            and (len(prev_raw) >= 60 or (len(prev_raw.split()) <= 3 and len(line.split()) <= 3) or line[0].islower())
         )
         if can_join:
             sep = "" if out[-1].endswith("-") else " "
