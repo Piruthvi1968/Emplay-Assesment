@@ -1,0 +1,8 @@
+# Generic procurement vocabulary for the query-rewrite fallback. NOT bid facts.
+deadline: [due date, closing date, submission deadline, proposal due, solicitation due]
+contact: [point of contact, buyer, procurement officer, contact information]
+warranty: [extended warranty, manufacturer warranty, OEM warranty, warranty period]
+bond: [bid bond, bid security, surety, proposal guarantee]
+delivery: [deliver within, days of award, ship date, lead time]
+submit: [submission instructions, electronic portal, sealed envelope, hard copy]
+affidavit: [affidavit, certification form, required forms]

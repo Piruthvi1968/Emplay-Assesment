@@ -1,0 +1,110 @@
+# The 20 extraction fields. The code only loops over this file; add/edit fields here, not in code.
+# Types: text, datetime, list, contact, summary.
+groups:
+  overview_dates: "Overview & dates"
+  commercial_legal: "Commercial & legal"
+  product_specs: "Product & specs"
+  summary: "Generated summary"
+
+fields:
+  - name: Bid Number
+    group: overview_dates
+    type: text
+    question: "What is the official solicitation / RFP identifier for this bid?"
+    hints: [solicitation number, RFP number, bid number, PORFP number, reference number, project number]
+  - name: Title
+    group: overview_dates
+    type: text
+    question: "What is the full title of the bid or RFP?"
+    hints: [title, request for proposal, solicitation title]
+  - name: Due Date
+    group: overview_dates
+    type: datetime
+    format: "YYYY-MM-DD HH:MM TZ"
+    question: "What is the final proposal submission deadline, including time and time zone, after any addendum changes?"
+    hints: [due date, closing date, solicitation due, proposal due, submission deadline, new due date]
+  - name: Bid Submission Type
+    group: overview_dates
+    type: text
+    question: "How must the bid be submitted (electronic portal, sealed paper, email, etc.)?"
+    hints: [submission instructions, submitted online, electronic system, portal, sealed envelope, hard copy, not accepted by email]
+  - name: Term of Bid
+    group: overview_dates
+    type: text
+    question: "What is the contract duration and any renewal options?"
+    hints: [term, initial term, renewal, length of contract, contract period, years]
+  - name: Pre Bid Meeting
+    group: overview_dates
+    type: text
+    question: "Is there a pre-bid / pre-proposal meeting? Give date, time, location, and whether attendance is mandatory, or 'None'."
+    hints: [pre-bid, pre-proposal meeting, prebid conference, bidders conference, mandatory, attendance]
+  - name: Delivery Date
+    group: overview_dates
+    type: text
+    question: "What is the required delivery date or delivery window after award?"
+    hints: [delivery, deliver within, days of award, ship date, lead time, delivered by]
+  - name: Installation
+    group: product_specs
+    type: text
+    question: "Are installation, deployment, imaging, or white-glove services required?"
+    hints: [installation, deployment, imaging, white glove, etching, asset tag, decaling, setup]
+  - name: Bid Bond Requirement
+    group: commercial_legal
+    type: text
+    question: "Is a bid bond or bid security required? Give amount or percentage, or 'Not required'."
+    hints: [bid bond, bid security, proposal bond, surety, cashier's check, percent of bid]
+  - name: Payment Terms
+    group: commercial_legal
+    type: text
+    question: "What are the payment terms and invoicing conditions?"
+    hints: [payment terms, net 30, invoice, invoicing instructions, accounts payable, payment]
+  - name: Any Additional Documentation Required
+    group: commercial_legal
+    type: list
+    question: "Which affidavits, forms, certificates, insurance or other documents must be submitted?"
+    hints: [affidavit, forms, W-9, W9, certificate of insurance, attachments, must be submitted, acknowledge addendum]
+  - name: MFG for Registration
+    group: commercial_legal
+    type: text
+    question: "Which manufacturer(s) must the bidder be registered or authorized with?"
+    hints: [manufacturer, authorized reseller, letter of authorization, OEM, factory-authorized]
+  - name: Contract or Cooperative to use
+    group: commercial_legal
+    type: text
+    question: "Which cooperative or state contract vehicle is referenced, if any?"
+    hints: [cooperative, master contract, interlocal, piggyback, state contract, purchasing cooperative]
+  - name: Model_no
+    group: product_specs
+    type: list
+    question: "What model number(s) of the requested products are specified?"
+    hints: [model, model number, Latitude, "model #"]
+  - name: Part_no
+    group: product_specs
+    type: list
+    question: "What part / SKU number(s) of the requested products are specified?"
+    hints: [part number, SKU, SI#, item number, catalog number]
+  - name: Product
+    group: product_specs
+    type: list
+    question: "What product(s) are requested and in what quantities?"
+    hints: [product name, quantity, qty, line item, price schedule, devices]
+  - name: contact_info
+    group: commercial_legal
+    type: contact
+    question: "Who is the procurement contact (name, email, phone)?"
+    hints: [point of contact, POC, buyer, procurement officer, contact information, email, phone]
+  - name: company_name
+    group: commercial_legal
+    type: text
+    question: "What organization or agency is issuing this bid?"
+    hints: [issuing organization, agency, district, department, office]
+  - name: Product Specification
+    group: product_specs
+    type: text
+    question: "What are the key technical specifications (CPU, RAM, storage, display, OS, warranty, etc.)?"
+    hints: [specifications, processor, memory, RAM, storage, SSD, display, warranty, operating system]
+  - name: Bid Summary
+    group: summary
+    type: summary
+    question: "Write a concise 3-6 sentence summary of the bid."
+    hints: []

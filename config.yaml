@@ -1,0 +1,40 @@
+paths:
+  data_dir: data
+  index_dir: index/chroma
+  manifest: index/manifest.json
+  outputs_dir: outputs
+  traces_dir: outputs/traces
+
+ingestion:
+  chunk_target_tokens: 400       # ~300-500
+  chunk_max_tokens: 600
+  chunk_overlap_tokens: 60
+  min_chars_per_page: 30         # below this a page is flagged empty / likely scanned
+  header_footer_min_repeat: 0.5  # line on >= 50% of pages -> treated as header/footer
+
+embedding:
+  model: BAAI/bge-small-en-v1.5
+  batch_size: 32
+
+search:
+  candidates_per_list: 20        # top_k per dense / BM25 list
+  rrf_k: 60
+  rerank_candidates: 20          # how many fused results go to the cross-encoder
+  rerank_model: Xenova/ms-marco-MiniLM-L-6-v2
+  top_k_single: 5                # final chunks for a single sub-query
+  top_k_multi: 3                 # per sub-query when there are several
+  addendum_k_single: 2
+  addendum_k_multi: 1
+  max_sub_queries: 4
+  not_found_threshold: 0.0       # cross-encoder score below this = irrelevant (calibrate on eval!)
+  enable_pinning: true           # exact ID-token matches always reach the re-ranker
+
+llm:
+  timeout_s: 60
+  max_retries: 2                 # transport / bad-JSON retries per call
+  max_tokens: 2048
+  temperature: 0
+
+agents:
+  max_validation_retries: 2
+  extraction_parallel_groups: true

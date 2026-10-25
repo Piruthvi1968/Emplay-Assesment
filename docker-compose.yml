@@ -1,0 +1,14 @@
+services:
+  api:
+    build: .
+    image: emplay-rfp-intelligence
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/app/data
+      - ./index:/app/index
+      - ./outputs:/app/outputs
+    command: python main.py serve
