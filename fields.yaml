@@ -1,5 +1,5 @@
 # The 20 extraction fields. The code only loops over this file; add/edit fields here, not in code.
-# Types: text, datetime, list, contact, summary.
+# Types: text, datetime, list, contact, summary. judge: true = free-text field checked by the LLM judge.
 groups:
   overview_dates: "Overview & dates"
   commercial_legal: "Commercial & legal"
@@ -10,12 +10,12 @@ fields:
   - name: Bid Number
     group: overview_dates
     type: text
-    question: "What is the official solicitation / RFP identifier for this bid?"
+    question: "What is the bid's official solicitation identifier on the main solicitation document? If several appear, prefer a lettered solicitation code (e.g. 'AB-123456', a PORFP number) over a purely numeric sourcing-system number, and the main document's identifier over portal or project reference numbers; list the others in notes."
     hints: [solicitation number, RFP number, bid number, PORFP number, reference number, project number]
   - name: Title
     group: overview_dates
     type: text
-    question: "What is the full title of the bid or RFP?"
+    question: "What is the full title of the bid or RFP (without its identifier numbers)?"
     hints: [title, request for proposal, solicitation title]
   - name: Due Date
     group: overview_dates
@@ -27,16 +27,18 @@ fields:
     group: overview_dates
     type: text
     question: "How must the bid be submitted (electronic portal, sealed paper, email, etc.)?"
+    judge: true
     hints: [submission instructions, submitted online, electronic system, portal, sealed envelope, hard copy, not accepted by email]
   - name: Term of Bid
     group: overview_dates
     type: text
     question: "What is the contract duration and any renewal options?"
+    judge: true
     hints: [term, initial term, renewal, length of contract, contract period, years]
   - name: Pre Bid Meeting
     group: overview_dates
     type: text
-    question: "Is there a pre-bid / pre-proposal meeting? Give date, time, location, and whether attendance is mandatory, or 'None'."
+    question: "Is there a pre-bid / pre-proposal meeting? Give date, time, location, and whether attendance is mandatory; 'None' only if the documents say there is none."
     hints: [pre-bid, pre-proposal meeting, prebid conference, bidders conference, mandatory, attendance]
   - name: Delivery Date
     group: overview_dates
@@ -47,16 +49,18 @@ fields:
     group: product_specs
     type: text
     question: "Are installation, deployment, imaging, or white-glove services required?"
+    judge: true
     hints: [installation, deployment, imaging, white glove, etching, asset tag, decaling, setup]
   - name: Bid Bond Requirement
     group: commercial_legal
     type: text
-    question: "Is a bid bond or bid security required? Give amount or percentage, or 'Not required'."
+    question: "Is a bid bond or bid security required? Give the amount or percentage; 'Not required' only if the documents say so."
     hints: [bid bond, bid security, proposal bond, surety, cashier's check, percent of bid]
   - name: Payment Terms
     group: commercial_legal
     type: text
     question: "What are the payment terms and invoicing conditions?"
+    judge: true
     hints: [payment terms, net 30, invoice, invoicing instructions, accounts payable, payment]
   - name: Any Additional Documentation Required
     group: commercial_legal
@@ -66,23 +70,23 @@ fields:
   - name: MFG for Registration
     group: commercial_legal
     type: text
-    question: "Which manufacturer(s) must the bidder be registered or authorized with?"
+    question: "Which manufacturer(s) must the bidder be registered or authorized with? If no manufacturer is named but the bidder must be the manufacturer or a manufacturer-authorized reseller, state that requirement."
     hints: [manufacturer, authorized reseller, letter of authorization, OEM, factory-authorized]
   - name: Contract or Cooperative to use
     group: commercial_legal
     type: text
-    question: "Which cooperative or state contract vehicle is referenced, if any?"
+    question: "Which cooperative purchasing programs, interlocal agreements or state/master contract vehicles does the solicitation reference (including optional riders that let other entities buy from the resulting contract)?"
     hints: [cooperative, master contract, interlocal, piggyback, state contract, purchasing cooperative]
   - name: Model_no
     group: product_specs
     type: list
-    question: "What model number(s) of the requested products are specified?"
-    hints: [model, model number, Latitude, "model #"]
+    question: "What manufacturer model names/numbers of the requested products are specified (e.g. a laptop or dock model)? Buyer item numbers and SKUs belong to Part_no; if the document labels them as model numbers, say so in notes."
+    hints: [model, model number, "model #", product model, manufacturer model]
   - name: Part_no
     group: product_specs
     type: list
-    question: "What part / SKU number(s) of the requested products are specified?"
-    hints: [part number, SKU, SI#, item number, catalog number]
+    question: "What part numbers, SKUs or buyer item numbers (e.g. 'SI#') of the requested products are specified?"
+    hints: [part number, SKU, SI#, item number, catalog number, product code]
   - name: Product
     group: product_specs
     type: list
@@ -91,7 +95,7 @@ fields:
   - name: contact_info
     group: commercial_legal
     type: contact
-    question: "Who is the procurement contact (name, email, phone)?"
+    question: "Who is the procurement contact named in the solicitation (buyer or procurement officer: name, email, phone)? Put other contacts in notes."
     hints: [point of contact, POC, buyer, procurement officer, contact information, email, phone]
   - name: company_name
     group: commercial_legal
@@ -102,6 +106,7 @@ fields:
     group: product_specs
     type: text
     question: "What are the key technical specifications (CPU, RAM, storage, display, OS, warranty, etc.)?"
+    judge: true
     hints: [specifications, processor, memory, RAM, storage, SSD, display, warranty, operating system]
   - name: Bid Summary
     group: summary

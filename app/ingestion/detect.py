@@ -6,6 +6,7 @@ Every rule here is a keyword or regex that works for any bid folder. Nothing is 
 from __future__ import annotations
 
 import re
+from datetime import date
 from pathlib import Path
 
 from dateutil import parser as date_parser
@@ -76,6 +77,17 @@ def detect_doc_date(first_page_text: str) -> str | None:
         return date_parser.parse(candidate).date().isoformat()
     except (ValueError, OverflowError):
         return None
+
+
+def find_dates(text: str) -> set[date]:
+    """Every date written in the text (27-JUN-2024, 06/10/2024, July 9, 2024, 2024-07-09)."""
+    found: set[date] = set()
+    for m in [*_DATE_ANY.finditer(text), *re.finditer(r"\b\d{4}-\d{2}-\d{2}\b", text)]:
+        try:
+            found.add(date_parser.parse(m.group(0)).date())
+        except (ValueError, OverflowError):
+            continue
+    return found
 
 
 def assign_doc_types(detected: dict[str, DocType | None], sizes: dict[str, int]) -> dict[str, DocType]:

@@ -72,6 +72,12 @@ class LLMCfg(BaseModel):
 class AgentsCfg(BaseModel):
     max_validation_retries: int = 2
     extraction_parallel_groups: bool = True
+    extraction_top_k: int = 6
+    extraction_top_k_retry: int = 10
+    extraction_max_per_file: int = 4
+    opening_chunks_per_document: int = 2
+    reconcile_batch_chunks: int = 20
+    qa_follow_up_rounds: int = 1
 
 
 class FieldSpec(BaseModel):
@@ -83,6 +89,7 @@ class FieldSpec(BaseModel):
     question: str
     hints: list[str] = Field(default_factory=list)
     format: str | None = None
+    judge: bool = False  # free-text field: the validator also asks an LLM judge whether the quotes support it
 
 
 class Settings(BaseModel):

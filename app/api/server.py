@@ -1,4 +1,4 @@
-"""FastAPI server: /health, /index, /search, /ask. Interactive docs at /docs."""
+"""FastAPI server: /health, /index, /search, /ask, /extract. Interactive docs at /docs."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 
 from app.llm_client import LLMError
-from app.models import DocType, IngestReport, QAResponse, SearchHit
+from app.models import BidRecord, DocType, IngestReport, QAResponse, SearchHit
 from app.runtime import Runtime
 from app.search.engine import chunk_body
 
@@ -60,6 +60,17 @@ class SearchResult(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1)
+
+
+class ExtractRequest(BaseModel):
+    bid_id: str | None = Field(None, description="A bid folder name inside data/, e.g. 'Bid1'")
+    folder: str | None = Field(None, description="Or a folder path inside data/, e.g. 'data/Bid1'")
+
+    @model_validator(mode="after")
+    def one_target(self) -> ExtractRequest:
+        if bool(self.bid_id) == bool(self.folder):
+            raise ValueError("give exactly one of 'bid_id' or 'folder'")
+        return self
 
 
 def create_app(runtime: Runtime | None = None) -> FastAPI:
@@ -114,6 +125,18 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
     def ask(body: AskRequest, request: Request) -> QAResponse:
         try:
             return rt(request).ask(body.question)
+        except LLMError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.post("/extract")
+    def extract(body: ExtractRequest, request: Request) -> BidRecord:
+        """Index (incremental) + the full multi-agent extraction; also saved to outputs/<bid_id>.json."""
+        r = rt(request)
+        try:
+            folder = r.resolve_folder(body.folder or body.bid_id or "")
+            return r.extract(folder)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except LLMError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 

@@ -44,5 +44,11 @@ llm:
     claude-haiku-5-5: [0.10, 0.50]
 
 agents:
-  max_validation_retries: 2
-  extraction_parallel_groups: true
+  max_validation_retries: 2      # re-extraction rounds for a field the validator rejects
+  extraction_parallel_groups: true   # run the 3 extraction specialists concurrently
+  extraction_top_k: 6            # base-document chunks per field
+  extraction_top_k_retry: 10     # wider search when a field is retried
+  extraction_max_per_file: 4     # source diversity: one long document can't take every evidence slot
+  opening_chunks_per_document: 2 # first chunks of the solicitation and portal page, shown to every extractor
+  reconcile_batch_chunks: 20     # addendum chunks per reconciliation call (long addenda are split)
+  qa_follow_up_rounds: 1         # extra retrieval rounds the Q&A agent may request for missing facts

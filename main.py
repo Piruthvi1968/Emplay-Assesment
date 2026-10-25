@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -109,6 +110,32 @@ def cmd_ask(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_extract(args: argparse.Namespace) -> int:
+    from app.llm_client import LLMError
+
+    runtime = Runtime.create()
+    for folder in _bid_folders(runtime, args):
+        try:
+            record = runtime.extract(folder)
+        except LLMError as exc:
+            raise SystemExit(str(exc)) from exc
+        print(f"\n{record.bid_id}: {record.validation}  ->  outputs/{record.bid_id}.json")
+        for name, result in record.fields.items():
+            check = record.field_validation[name]
+            value = json.dumps(result.value, ensure_ascii=False) if result.value is not None else "-"
+            print(f"  {check.status:<9} {result.confidence:4.2f}  {name:<38} {value[:80]}")
+        for change in record.addendum_changes:
+            print(f"  {change.addendum}: {change.change_type} {change.field} -> {json.dumps(change.new_value)[:70]}")
+        print(f"  run: {record.run_info.get('llm_usage')}  {record.run_info.get('duration_s')}s")
+    return 0
+
+
+def cmd_eval(args: argparse.Namespace) -> int:
+    from eval.run_eval import main as run_eval
+
+    return run_eval()
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -124,20 +151,15 @@ def main(argv: list[str] | None = None) -> int:
     if argv and argv[0] in ("--bid", "--all"):  # the brief's one-command form: main.py --bid ./data/Bid1
         argv = ["extract", *argv]
     args = build_parser().parse_args(argv)
-    if args.command == "index":
-        return cmd_index(args)
-    if args.command == "search":
-        return cmd_search(args)
-    if args.command == "eval":
-        from eval.run_eval import main as run_eval
-
-        return run_eval()
-    if args.command == "ask":
-        return cmd_ask(args)
-    if args.command == "serve":
-        return cmd_serve(args)
-    print(f"'{args.command}' is not implemented yet.", file=sys.stderr)
-    return 1
+    commands = {
+        "index": cmd_index,
+        "extract": cmd_extract,
+        "ask": cmd_ask,
+        "search": cmd_search,
+        "eval": cmd_eval,
+        "serve": cmd_serve,
+    }
+    return commands[args.command](args)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 
+from pydantic import BaseModel
 from rapidfuzz import fuzz
 
 from app.ingestion.chunker import doc_label
@@ -15,6 +16,14 @@ from app.models import Chunk, SearchHit, Source, SubEvidence
 from app.search.engine import chunk_body
 
 _QUOTE_MIN_SIMILARITY = 90  # rapidfuzz partial_ratio; tolerates whitespace/punctuation noise
+NOT_FOUND = "Not found in documents"
+
+
+class CitedQuote(BaseModel):
+    """An LLM citation: the evidence number from the prompt and a verbatim quote from it."""
+
+    evidence: int
+    quote: str
 
 
 def evidence_header(chunk: Chunk) -> str:
@@ -23,13 +32,13 @@ def evidence_header(chunk: Chunk) -> str:
     return f"{m.bid_id} | {m.file_name} | {doc_label(m.doc_type, m.addendum_number)} | {where}"
 
 
-def number_evidence(evidence: list[SubEvidence]) -> tuple[str, dict[int, SearchHit]]:
+def number_evidence(evidence: list[SubEvidence], label: str = "Sub-question") -> tuple[str, dict[int, SearchHit]]:
     """Render evidence as '[n] header + text' blocks, grouped by sub-question; a chunk gets one number."""
     lines: list[str] = []
     numbers: dict[str, int] = {}
     by_number: dict[int, SearchHit] = {}
     for i, sub in enumerate(evidence, start=1):
-        lines.append(f"## Sub-question {i}: {sub.question}")
+        lines.append(f"## {label} {i}: {sub.question}")
         if not sub.hits:
             lines.append("(no evidence found)")
         elif sub.no_evidence:

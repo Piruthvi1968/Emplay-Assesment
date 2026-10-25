@@ -14,7 +14,10 @@ COLLECTION = "bids"
 
 
 def build_where(
-    bid_ids: list[str] | None = None, doc_type: str | None = None, addendum_number: int | None = None
+    bid_ids: list[str] | None = None,
+    doc_type: str | None = None,
+    addendum_number: int | None = None,
+    exclude_doc_types: list[str] | None = None,
 ) -> dict[str, Any] | None:
     """Chroma `where` filter. One condition is passed bare; several are wrapped in $and."""
     conds: list[dict[str, Any]] = []
@@ -22,6 +25,8 @@ def build_where(
         conds.append({"bid_id": {"$in": list(bid_ids)}} if len(bid_ids) > 1 else {"bid_id": bid_ids[0]})
     if doc_type:
         conds.append({"doc_type": doc_type})
+    if exclude_doc_types:
+        conds.append({"doc_type": {"$nin": list(exclude_doc_types)}})
     if addendum_number is not None:
         conds.append({"addendum_number": addendum_number})
     if not conds:

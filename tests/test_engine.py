@@ -45,6 +45,14 @@ def test_bid_and_doc_type_filters(engine: SearchEngine) -> None:
     hits = engine.search("due date", top_k=5, bid_ids=["Bid1"], doc_type="addendum")
     assert {h.chunk.meta.chunk_id for h in hits} <= {"b1_add2", "b1_add1"}
     assert engine.search("due date", top_k=5, bid_ids=["Bid2"], doc_type="addendum") == []
+    base_only = engine.search("new due date addendum", top_k=10, bid_ids=["Bid1"], exclude_doc_types=["addendum"])
+    assert base_only and all(h.chunk.meta.doc_type != "addendum" for h in base_only)
+
+
+def test_document_chunks_in_reading_order(engine: SearchEngine) -> None:
+    docs = engine.document_chunks("Bid1", "addendum")
+    assert sorted(docs) == ["b1_add1.pdf", "b1_add2.pdf"]
+    assert engine.get_chunk("b2_sku").meta.doc_type == "specs" and engine.get_chunk("nope") is None
 
 
 def test_modes_and_ranks(engine: SearchEngine) -> None:

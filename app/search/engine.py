@@ -42,6 +42,12 @@ def id_like_tokens(text: str) -> list[str]:
     return list(dict.fromkeys(out))
 
 
+def _chunk_number(chunk_id: str) -> int:
+    """n from '...::p3::c<n>' (0 if the id has another shape)."""
+    m = re.search(r"::c(\d+)$", chunk_id)
+    return int(m.group(1)) if m else 0
+
+
 def chunk_body(chunk: Chunk) -> str:
     """Chunk text without the '[Bid | doc | file | page | section]' context line."""
     text = chunk.text
@@ -107,6 +113,19 @@ class SearchEngine:
     def chunks(self) -> list[Chunk]:
         return list(self._chunks.values())
 
+    def get_chunk(self, chunk_id: str) -> Chunk | None:
+        return self._chunks.get(chunk_id)
+
+    def document_chunks(self, bid_id: str, doc_type: str) -> dict[str, list[Chunk]]:
+        """All chunks of each document of one type, per file and in reading order (page, then chunk number)."""
+        out: dict[str, list[Chunk]] = {}
+        for c in self._chunks.values():
+            if c.meta.bid_id == bid_id and c.meta.doc_type == doc_type:
+                out.setdefault(c.meta.file_name, []).append(c)
+        for chunks in out.values():
+            chunks.sort(key=lambda c: (c.meta.page_number or 0, _chunk_number(c.meta.chunk_id)))
+        return out
+
     def search(
         self,
         sub_query: SubQuery | str,
@@ -115,6 +134,7 @@ class SearchEngine:
         doc_type: str | None = None,
         addendum_number: int | None = None,
         mode: SearchMode | None = None,
+        exclude_doc_types: list[str] | None = None,
     ) -> list[SearchHit]:
         """Retrieve the top_k chunks for one (sub-)question, honouring the metadata filters.
 
@@ -124,13 +144,15 @@ class SearchEngine:
         mode = mode or self.cfg.default_mode
         sq = SubQuery(question=sub_query) if isinstance(sub_query, str) else sub_query
         texts = list(dict.fromkeys(t.strip() for t in [sq.question, *sq.queries, *sq.keywords] if t.strip()))
-        where = build_where(bid_ids, doc_type, addendum_number)
+        where = build_where(bid_ids, doc_type, addendum_number, exclude_doc_types)
+        excluded = set(exclude_doc_types or [])
 
         def allow(c: Chunk) -> bool:
             m = c.meta
             return (
                 (not bid_ids or m.bid_id in bid_ids)
                 and (not doc_type or m.doc_type == doc_type)
+                and m.doc_type not in excluded
                 and (addendum_number is None or m.addendum_number == addendum_number)
             )
 

@@ -150,7 +150,9 @@ class AddendumChange(BaseModel):
 class FieldValidation(BaseModel):
     status: Literal["passed", "failed", "not_found"]
     confidence: float = 0.0
-    reasons: list[str] = Field(default_factory=list)  # failed checks / warnings, human readable
+    attempts: int = 1
+    failures: list[str] = Field(default_factory=list)  # checks that reject the value
+    warnings: list[str] = Field(default_factory=list)  # checks that only lower confidence
 
 
 class BidRecord(BaseModel):
@@ -159,6 +161,7 @@ class BidRecord(BaseModel):
     fields: dict[str, FieldResult]  # the fields.yaml names, in order
     addendum_changes: list[AddendumChange] = Field(default_factory=list)
     validation: dict[str, int] = Field(default_factory=dict)  # passed / failed / not_found counts
+    field_validation: dict[str, FieldValidation] = Field(default_factory=dict)  # per-field checks, for review
     run_info: dict[str, Any] = Field(default_factory=dict)
 
 

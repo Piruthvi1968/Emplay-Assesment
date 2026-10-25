@@ -40,17 +40,18 @@ def test_citations_are_renumbered_and_verified() -> None:
         ],
     )
     # In the prompt, chunk "a" is [1] and chunk "b" is [2].
-    resp = answer_question(FakeLLM({"DraftAnswer": draft}), "When is it due?", PLAN, EVIDENCE, "run1")
+    resp, follow_ups = answer_question(FakeLLM({"DraftAnswer": draft}), "When is it due?", PLAN, EVIDENCE, "run1")
     assert resp.answer == "Due July 9, 2024 [1], originally June 27 [2]. Also."  # [7] never existed
     assert [c.chunk_id for c in resp.citations] == ["b", "a"]
     assert resp.citations[0].quote == "Solicitation Due 27-JUN-2024"
     assert resp.citations[1].quote.startswith("The new due date")  # unsupported quote replaced by real text
     assert resp.citations[0].page == 2
+    assert follow_ups == []
 
 
 def test_no_hits_means_not_found_without_llm_call() -> None:
     llm = FakeLLM()
-    resp = answer_question(llm, "Bid bond?", PLAN, [SubEvidence(question="Bid bond?")], "run1")
+    resp, _ = answer_question(llm, "Bid bond?", PLAN, [SubEvidence(question="Bid bond?")], "run1")
     assert resp.answer == NOT_FOUND and llm.calls == []
 
 
@@ -63,6 +64,12 @@ def test_low_relevance_evidence_still_goes_to_the_llm() -> None:
 
 def test_chitchat_and_llm_failure() -> None:
     hello = QueryPlan(intent="chitchat", reply="Hi there")
-    assert answer_question(FakeLLM(), "hi", hello, [], "r").answer == "Hi there"
-    failed = answer_question(FakeLLM({"DraftAnswer": LLMError("timeout")}), "q", PLAN, EVIDENCE, "r")
+    assert answer_question(FakeLLM(), "hi", hello, [], "r")[0].answer == "Hi there"
+    failed, _ = answer_question(FakeLLM({"DraftAnswer": LLMError("timeout")}), "q", PLAN, EVIDENCE, "r")
     assert "could not be generated" in failed.answer and failed.citations == []
+
+
+def test_follow_up_queries_are_returned() -> None:
+    draft = DraftAnswer(answer="Changed to July 9 [1].", parts=[], follow_up_queries=["original due date", "x", "y"])
+    _, follow_ups = answer_question(FakeLLM({"DraftAnswer": draft}), "What changed?", PLAN, EVIDENCE, "r")
+    assert follow_ups == ["original due date", "x"]  # at most 2

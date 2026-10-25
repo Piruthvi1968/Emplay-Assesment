@@ -7,14 +7,15 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
-from app.agents.report_agent import answer_question
+from app.agents.base import AgentContext
+from app.agents.graph import build_graph
+from app.agents.report_agent import fallback_record, save_record
 from app.config import Settings, get_settings
 from app.ingestion.pipeline import ingest_folder
 from app.llm_client import LLM, LLMClient, LLMError
 from app.logging_utils import TraceLogger
-from app.models import IngestReport, QAResponse
+from app.models import BidRecord, IngestReport, QAResponse
 from app.search.engine import SearchEngine
-from app.search.query_planner import QueryPlanner
 
 log = logging.getLogger(__name__)
 
@@ -62,11 +63,29 @@ class Runtime:
             raise LLMError("no LLM configured: set ANTHROPIC_API_KEY, LLM_MODEL and LLM_MODEL_FAST in .env")
         return self.llm_factory(trace)
 
+    def _run_graph(self, state: dict, trace: TraceLogger) -> dict:
+        ctx = AgentContext(self.settings, self.engine, self.new_llm(trace), trace, self.index)
+        parallel = self.settings.agents.extraction_parallel_groups
+        config = {"max_concurrency": None if parallel else 1, "recursion_limit": 60}
+        return build_graph(ctx).invoke({**state, "run_id": trace.run_id}, config=config)
+
+    def extract(self, folder: Path) -> BidRecord:
+        """Run the extraction graph on one bid folder; always returns (and saves) a record, even after an error."""
+        trace_path = self.settings.paths.traces_dir / f"extract_{folder.name}.jsonl"
+        trace_path.unlink(missing_ok=True)  # the trace file holds the latest run
+        trace = TraceLogger(trace_path)
+        try:
+            state = self._run_graph({"mode": "extract", "bid_folder": str(folder), "bid_id": folder.name}, trace)
+            return state["final_output"]
+        except LLMError:
+            raise
+        except Exception as exc:  # the graph itself broke: still write a complete (failed) record
+            log.exception("extraction run failed")
+            record = fallback_record(folder.name, self.settings, f"{type(exc).__name__}: {exc}", trace.run_id)
+            save_record(record, self.settings)
+            return record
+
     def ask(self, question: str, trace: TraceLogger | None = None) -> QAResponse:
-        """Plan -> gather evidence -> cited answer. Step 7 moves this flow into the LangGraph Q&A graph."""
+        """Run the Q&A graph: plan -> retrieve -> cited answer (+ one follow-up search if the agent needs it)."""
         trace = trace or TraceLogger()
-        llm = self.new_llm(trace)
-        planner = QueryPlanner(llm, self.engine.catalog(), self.settings.synonyms, self.settings.search.max_sub_queries)
-        plan = planner.plan(question)
-        evidence = self.engine.gather_evidence(plan) if plan.sub_queries else []
-        return answer_question(llm, question, plan, evidence, trace.run_id)
+        return self._run_graph({"mode": "qa", "question": question}, trace)["final_output"]
