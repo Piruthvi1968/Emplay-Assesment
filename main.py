@@ -11,6 +11,13 @@ from pathlib import Path
 from app.runtime import Runtime
 
 
+def _positive(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be 1 or more")
+    return number
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="main.py", description="RFP Intelligence Platform")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -33,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("query")
     p.add_argument("--bid", action="append", dest="bids", help="Filter by bid_id (repeatable)")
     p.add_argument("--doc-type", default=None)
-    p.add_argument("--top-k", type=int, default=5)
+    p.add_argument("--top-k", type=_positive, default=5)
     p.add_argument(
         "--mode",
         choices=["vector", "hybrid", "hybrid_rerank"],

@@ -59,7 +59,8 @@ EXTRACTION_SYSTEM = f"""You are an extraction specialist for procurement bid doc
 fields using ONLY the numbered evidence. Do not use outside knowledge.
 
 The evidence comes from the bid's base documents (solicitation, specifications, bid portal page, forms). \
-Addenda are reviewed by a separate agent afterwards, so report what these documents say.
+Addenda are reviewed by a separate agent afterwards, so report what these documents say and do not mention \
+addenda in notes.
 
 For every field return:
 - value: the answer in the field's format, or null if the evidence does not contain it.
@@ -122,7 +123,8 @@ that the information will be supplied later or by the vendor (e.g. "the vendor p
 value: keep new_value null and explain it in reason.
 - A statement of intent or expectation ("does not anticipate extending", "is anticipated", "may") is not a \
 change. Questions from vendors are not facts; the district's answers are.
-- Cite the evidence number and copy the supporting sentence verbatim (at most 300 characters).
+- citations: every evidence number the new value relies on, each with its supporting sentence copied verbatim \
+(at most 300 characters); one citation per fact when the value combines several answers.
 - reason: one sentence explaining the change.
 - Use only the addendum evidence; keep the formats of the fields. In reasons: {DATE_STYLE}"""
 

@@ -14,6 +14,7 @@ from app.agents.base import AgentContext, agent_node
 from app.agents.evidence import (
     NOT_FOUND,
     CitedQuote,
+    closest_line,
     evidence_header,
     number_evidence,
     quote_supported,
@@ -145,12 +146,12 @@ def answer_warnings(
 
 
 def with_verified_quotes(result: FieldResult, engine: SearchEngine) -> FieldResult:
-    """Final guard for the JSON file: a quote that is not in its chunk is replaced by the chunk's own text."""
+    """Final guard for the JSON file: a quote that is not in its chunk is replaced by the closest line of the chunk."""
     sources = []
     for src in result.sources:
         chunk = engine.get_chunk(src.chunk_id)
         if chunk is not None and not quote_supported(src.quote, chunk_body(chunk)):
-            src = src.model_copy(update={"quote": chunk_body(chunk)[:300].strip()})
+            src = src.model_copy(update={"quote": closest_line(src.quote, chunk_body(chunk))})
         sources.append(src)
     return result.model_copy(update={"sources": sources})
 

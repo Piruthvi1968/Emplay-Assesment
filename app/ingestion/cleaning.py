@@ -65,7 +65,10 @@ def is_heading(line: str) -> bool:
         # "1. The vendor shall ..." is a list item, not a heading: headings are short and title-like
         return not re.match(r"^\d{1,3}[.)]\s", s) or len(s.split()) <= 4
     letters = [c for c in s if c.isalpha()]
-    return len(letters) >= 4 and all(c.isupper() for c in letters) and len(s.split()) <= 10
+    upper = sum(c.isupper() for c in letters)
+    # all caps, or nearly: 'INTERLOCAL AGREEMENT ("Rider") CONSENT FORM', 'ADDENDUM No. 2'
+    caps = (len(letters) >= 4 and upper == len(letters)) or (len(letters) >= 8 and upper >= 0.85 * len(letters))
+    return caps and len(s.split()) <= 10
 
 
 def remove_repeated_lines(doc: ParsedDoc, min_repeat: float) -> int:

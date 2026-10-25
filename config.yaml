@@ -30,7 +30,7 @@ search:
   addendum_k_single: 2
   addendum_k_multi: 1
   max_sub_queries: 4
-  not_found_threshold: 0.0       # cross-encoder score below this = irrelevant (calibrate on eval!)
+  not_found_threshold: -12.0     # below the lowest score of any correct answer (-10.8): flags only hopeless sub-queries
   enable_pinning: true           # exact ID-token matches always reach the re-ranker
 
 llm:

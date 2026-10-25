@@ -13,6 +13,7 @@ from app.models import Block, ParsedDoc, ParsedPage
 log = logging.getLogger(__name__)
 
 _MARGIN = 0.12  # top/bottom fraction of the page treated as header/footer area
+_SMALL_TABLE_CHARS = 400  # tables up to ~100 tokens stay inside the surrounding text
 _PRINTED_PAGE = re.compile(r"\bpage\s+(\d+)\s*(?:of|\|)\s*(\d+)\b", re.I)
 
 
@@ -80,6 +81,37 @@ def _inside(block_rect: pymupdf.Rect, table_rects: list[pymupdf.Rect]) -> bool:
     return any(centre in r for r in table_rects)
 
 
+def body_blocks(body: list[tuple[float, str]], grids: list[tuple[pymupdf.Rect, str]]) -> list[Block]:
+    """Body text in native order with each table placed where it sits on the page.
+
+    A table goes before the first text block that starts below it, so it gets the section of the
+    heading above it. Small tables (e.g. a two-row form grid) stay inside the surrounding text instead
+    of becoming tiny chunks of their own.
+    """
+    blocks: list[Block] = []
+    parts: list[str] = []
+    pending = sorted(grids, key=lambda grid: grid[0].y0)
+
+    def place(markdown: str) -> None:
+        if len(markdown) <= _SMALL_TABLE_CHARS:
+            parts.append(markdown)
+            return
+        if parts:
+            blocks.append(Block(kind="text", text="\n\n".join(parts)))
+            parts.clear()
+        blocks.append(Block(kind="table", text=markdown))
+
+    for y0, text in body:
+        while pending and pending[0][0].y0 <= y0:
+            place(pending.pop(0)[1])
+        parts.append(text)
+    for _, markdown in pending:
+        place(markdown)
+    if parts:
+        blocks.append(Block(kind="text", text="\n\n".join(parts)))
+    return blocks
+
+
 def parse_pdf(path: Path, min_chars_per_page: int = 30) -> ParsedDoc:
     """Parse every page. Table areas are removed from the running text so content is not duplicated."""
     doc = ParsedDoc(file_name=path.name)
@@ -104,7 +136,9 @@ def parse_pdf(path: Path, min_chars_per_page: int = 30) -> ParsedDoc:
             # headers/footers can sit anywhere in it, so margin blocks are split out by position and
             # marked; cleaning.remove_repeated_lines only removes lines from those.
             height = page.rect.height
-            top, body, bottom = [], [], []
+            top: list[str] = []
+            bottom: list[str] = []
+            body: list[tuple[float, str]] = []  # (top y, text) in native order
             for b in page.get_text("blocks"):
                 if b[6] != 0 or not b[4].strip() or _inside(pymupdf.Rect(b[:4]), grid_rects):
                     continue
@@ -113,13 +147,11 @@ def parse_pdf(path: Path, min_chars_per_page: int = 30) -> ParsedDoc:
                 elif b[1] >= height * (1 - _MARGIN):
                     bottom.append(b[4].strip())
                 else:
-                    body.append(b[4].strip())
-            blocks = [
-                Block(kind="text", text="\n\n".join(parts), in_margin=margin)
-                for parts, margin in ((top, True), (body, False), (bottom, True))
-                if parts
-            ]
-            blocks += [Block(kind="table", text=md) for _, md in grids]
+                    body.append((b[1], b[4].strip()))
+            blocks = [Block(kind="text", text="\n\n".join(top), in_margin=True)] if top else []
+            blocks += body_blocks(body, grids)
+            if bottom:
+                blocks.append(Block(kind="text", text="\n\n".join(bottom), in_margin=True))
 
             full = page.get_text("text")
             m = _PRINTED_PAGE.search(full)

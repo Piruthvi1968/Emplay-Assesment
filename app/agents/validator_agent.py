@@ -22,7 +22,8 @@ from app.llm_client import LLMError
 from app.models import AddendumChange, FieldResult, FieldValidation, FieldValue
 from app.search.engine import chunk_body, id_like_tokens
 
-_DATETIME = re.compile(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}( [A-Z]{2,5})?)?$")
+# the zone as the source writes it: 'CST', 'EDT', 'Pacific', 'Eastern Time'
+_DATETIME = re.compile(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}( [A-Za-z][A-Za-z.]*( [A-Za-z][A-Za-z.]*){0,2})?)?$")
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _PHONE = re.compile(r"\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b")
 _ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
@@ -128,8 +129,9 @@ def datetime_problems(value: str, cited_texts: list[str]) -> tuple[list[str], li
     failures, warnings = [], []
     if len(parts) >= 2 and parts[1] not in clock_times(corpus):
         failures.append(f"time {parts[1]} is not stated in the cited text")
-    if len(parts) == 3 and not re.search(rf"\b{re.escape(parts[2])}\b", corpus):
-        warnings.append(f"time zone {parts[2]} is not stated in the cited text")
+    zone = " ".join(parts[2:])
+    if zone and not re.search(rf"\b{re.escape(zone)}\b", corpus, re.I):
+        warnings.append(f"time zone {zone} is not stated in the cited text")
     return failures, warnings
 
 

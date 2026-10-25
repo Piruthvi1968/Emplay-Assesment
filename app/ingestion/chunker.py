@@ -15,6 +15,7 @@ from app.models import Chunk, ChunkMeta, DocType, ParsedDoc
 _UNIT_START = re.compile(r"^(\d{1,3}[.)]|Q\s*\d{1,3}[.:)]?)\s+\S", re.I)  # numbered item / question
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9(\"'])")
 _MIN_BODY_CHARS = 15
+_MIN_FLUSH_TOKENS = 30  # a chunk is never closed while it holds less than this
 
 
 def estimate_tokens(text: str) -> int:
@@ -103,7 +104,10 @@ def pack_units(units: list[str], target: int, max_tokens: int, overlap: int) -> 
     has_new = False  # buf holds more than the carried-over overlap
     for piece in pieces:
         candidate = "\n".join(buf + [piece])
-        if has_new and estimate_tokens(candidate) > target:
+        # a tiny buffer (e.g. a lone heading) travels with the next piece instead of becoming its own chunk
+        size = estimate_tokens(candidate)
+        too_small = estimate_tokens("\n".join(buf)) < _MIN_FLUSH_TOKENS
+        if has_new and size > target and not (too_small and size <= max_tokens):
             chunks.append("\n".join(buf))
             tail = _tail(chunks[-1], overlap)
             buf = [tail] if tail and estimate_tokens(tail + piece) <= max_tokens else []
@@ -186,8 +190,9 @@ def chunk_doc(
                     ]
 
             for body, sec, is_table in bodies:
-                if len(body.strip()) < _MIN_BODY_CHARS:
-                    continue
+                lines = [line for line in body.splitlines() if line.strip()]
+                if len(body.strip()) < _MIN_BODY_CHARS or all(is_heading(line) for line in lines):
+                    continue  # nothing to cite; a heading still labels the chunks after it as their section
                 prefix_parts = [bid_id, label, stem]
                 if page.page_number is not None:
                     prefix_parts.append(f"p.{page.page_number}")

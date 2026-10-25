@@ -106,8 +106,7 @@ def reconcile_reply(prompt: str) -> AddendumReview:
         field="Due Date",
         change_type="override",
         new_value=NEW_DUE,
-        evidence=citation.evidence,
-        quote=citation.quote,
+        citations=[citation],
         reason="The addendum sets a new due date.",
     )
     return AddendumReview(changes=[change])
@@ -240,17 +239,31 @@ def test_addendum_overrides_due_date(tmp_path: Path, settings: Settings, folder:
     assert record.field_validation["Due Date"].attempts == 1  # passed first time, then frozen
 
 
-def test_override_labels_the_notes_of_the_old_value() -> None:
+def test_override_replaces_the_notes_of_the_old_value() -> None:
     source = Source(file="Addendum 2.pdf", page=1, chunk_id="c1", quote="The new due date is July 9.")
     draft = FieldResult(value=OLD_DUE, notes="The portal shows a different date")
+    cited = [CitedQuote(evidence=1, quote=source.quote)]
     change = ProposedChange(
-        field="Due Date", change_type="override", new_value=NEW_DUE, evidence=1, quote=source.quote, reason="Extended"
+        field="Due Date", change_type="override", new_value=NEW_DUE, citations=cited, reason="Extended"
     )
-    ReconciliationAgent.apply(draft, change, source, "Addendum 2", "datetime")
-    assert draft.notes == (
-        f'Changed by Addendum 2 (original: "{OLD_DUE}"). Extended. '
-        "Notes on the original value: The portal shows a different date."
+    ReconciliationAgent.apply(draft, change, [source], "Addendum 2", "datetime")
+    assert draft.notes == f'Changed by Addendum 2 (original: "{OLD_DUE}"). Extended.'  # stale notes dropped
+
+
+def test_clarification_keeps_one_source_per_fact() -> None:
+    first = Source(file="Addendum 1.pdf", page=1, chunk_id="a", quote="Quotes start in September 2024.")
+    second = Source(file="Addendum 1.pdf", page=2, chunk_id="b", quote="Meet the agreed delivery deadline.")
+    draft = FieldResult(value=None, notes="Not found in documents")
+    cited = [CitedQuote(evidence=1, quote=first.quote), CitedQuote(evidence=2, quote=second.quote)]
+    change = ProposedChange(
+        field="Delivery Date",
+        change_type="clarification",
+        new_value="From September 2024, by the agreed deadline",
+        citations=cited,
+        reason="Timing answers",
     )
+    record = ReconciliationAgent.apply(draft, change, [first, second], "Addendum 1", "text")
+    assert draft.sources == [first, second] and record.source == first
 
 
 def test_first_null_is_retried_once_then_not_found(tmp_path: Path, settings: Settings, folder: Path) -> None:

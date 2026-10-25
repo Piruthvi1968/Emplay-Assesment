@@ -29,6 +29,12 @@ def test_addendum_number() -> None:
 
 def test_doc_date_formats() -> None:
     assert detect_doc_date("Issued 27-JUN-2024 14:00") == "2024-06-27"
-    assert detect_doc_date("The new due date will be July 9, 2024 at 2:00 PM") == "2024-07-09"
+    assert detect_doc_date("Addendum No. 2, July 9, 2024") == "2024-07-09"
     assert detect_doc_date("Closing Date: 06/10/2024\nPublication: 05/28/2024 11:47 AM") == "2024-05-28"
     assert detect_doc_date("no dates here") is None
+
+
+def test_deadlines_are_not_the_document_date_and_amendments_are_numbered() -> None:
+    assert detect_doc_date("ADDENDUM No. 2\nThe new due date for this RFP will be July 9, 2024 at 2:00 PM.") is None
+    assert detect_doc_date("Issued February 1, 2025. Bids due March 3, 2025") == "2025-02-01"
+    assert detect_addendum_number("notice.pdf", "AMENDMENT NO. 1 to IFB 25-01") == 1

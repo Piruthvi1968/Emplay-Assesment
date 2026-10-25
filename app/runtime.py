@@ -44,11 +44,11 @@ class Runtime:
         return sorted(p for p in data_dir.iterdir() if p.is_dir()) if data_dir.is_dir() else []
 
     def resolve_folder(self, folder: str | Path) -> Path:
-        """A bid folder given by path or by name; it must exist and lie inside the data directory."""
+        """A bid folder given by path or by name; it must be an existing folder directly inside the data directory."""
         data_dir = self.settings.paths.data_dir.resolve()
         path = Path(folder)
         path = (path if path.is_absolute() or path.exists() else data_dir / path).resolve()
-        if not path.is_dir() or not path.is_relative_to(data_dir):
+        if not path.is_dir() or path.parent != data_dir:
             raise ValueError(f"not a bid folder inside {data_dir}: {folder}")
         return path
 
@@ -71,6 +71,8 @@ class Runtime:
 
     def extract(self, folder: Path) -> BidRecord:
         """Run the extraction graph on one bid folder; always returns (and saves) a record, even after an error."""
+        if self.llm_factory is None:  # fail before touching the previous run's trace
+            raise LLMError("no LLM configured: set ANTHROPIC_API_KEY, LLM_MODEL and LLM_MODEL_FAST in .env")
         trace_path = self.settings.paths.traces_dir / f"extract_{folder.name}.jsonl"
         trace_path.unlink(missing_ok=True)  # the trace file holds the latest run
         trace = TraceLogger(trace_path)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 from app.agents.base import AgentContext, agent_node
-from app.agents.evidence import NOT_FOUND, CitedQuote, number_evidence
+from app.agents.evidence import NOT_FOUND, CitedQuote, locate, number_evidence
 from app.agents.prompts import EXTRACTION_PROMPT, EXTRACTION_SYSTEM
 from app.config import FieldSpec, FieldType
 from app.llm_client import LLMError
@@ -51,7 +51,7 @@ def to_sources(citations: list[CitedQuote], by_number: dict[int, SearchHit]) -> 
     sources: list[Source] = []
     issues: list[str] = []
     for c in citations:
-        hit = by_number.get(c.evidence)
+        hit = locate(c, by_number)
         if hit is None:
             issues.append(f"cited evidence [{c.evidence}], which was not provided")
             continue

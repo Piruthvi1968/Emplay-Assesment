@@ -65,6 +65,21 @@ def quote_supported(quote: str, text: str) -> bool:
     return bool(q) and (q in t or fuzz.partial_ratio(q, t) >= _QUOTE_MIN_SIMILARITY)
 
 
+def locate(citation: CitedQuote, by_number: dict[int, SearchHit]) -> SearchHit | None:
+    """The passage a citation points to. Models sometimes give a neighbouring evidence number with a correct
+    quote: when the quote is not in the cited passage but in exactly one other passage of the prompt, use that one.
+    """
+    hit = by_number.get(citation.evidence)
+    if hit is not None and quote_supported(citation.quote, chunk_body(hit.chunk)):
+        return hit
+    others = [
+        other
+        for n, other in by_number.items()
+        if n != citation.evidence and quote_supported(citation.quote, chunk_body(other.chunk))
+    ]
+    return others[0] if len(others) == 1 else hit
+
+
 def closest_line(quote: str, text: str) -> str:
     """The line of `text` most similar to `quote`: the stand-in for a quote that is not in the text."""
     lines = [line.strip() for line in text.splitlines() if line.strip()]

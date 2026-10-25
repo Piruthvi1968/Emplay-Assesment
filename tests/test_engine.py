@@ -117,3 +117,7 @@ def test_refresh_and_delete(engine: SearchEngine) -> None:
     engine.store.delete_file("Bid2", "b2_sku.pdf")
     engine.refresh()
     assert "b2_sku" not in {c.meta.chunk_id for c in engine.chunks()}
+
+
+def test_non_positive_top_k_returns_nothing(engine: SearchEngine) -> None:
+    assert engine.search("due date", top_k=0) == [] and engine.search("due date", top_k=-1) == []

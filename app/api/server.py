@@ -62,7 +62,13 @@ class SearchResult(BaseModel):
 
 
 class AskRequest(BaseModel):
-    question: str = Field(..., min_length=1)
+    question: str = Field(..., min_length=1, max_length=2000)
+
+    @model_validator(mode="after")
+    def not_blank(self) -> AskRequest:
+        if not self.question.strip():
+            raise ValueError("the question is empty")
+        return self
 
 
 class ExtractRequest(BaseModel):

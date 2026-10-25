@@ -113,3 +113,20 @@ def test_compare_returns_markdown(tmp_path: Path, settings: Settings) -> None:
         resp = c.get("/compare", params={"bid_id": "Bid1"})
         assert resp.status_code == 200 and resp.headers["content-type"].startswith("text/plain")
         assert "| Field | Bid1 |" in resp.text
+
+
+def test_input_limits_and_folder_rules(tmp_path: Path, settings: Settings) -> None:
+    runtime = _runtime(tmp_path, settings, with_llm=False)
+    with pytest.raises(ValueError):
+        runtime.resolve_folder(settings.paths.data_dir)  # the data directory itself is not a bid
+    settings.paths.traces_dir = tmp_path / "traces"
+    trace = settings.paths.traces_dir / "extract_Bid1.jsonl"
+    trace.parent.mkdir()
+    trace.write_text("{}\n", encoding="utf-8")
+    (settings.paths.data_dir / "Bid1").mkdir()
+    with TestClient(create_app(runtime)) as c:
+        assert c.post("/ask", json={"question": "   "}).status_code == 422
+        assert c.post("/ask", json={"question": "x" * 2001}).status_code == 422
+        assert c.post("/index", json={"folder": "."}).status_code == 400
+        assert c.post("/extract", json={"bid_id": "Bid1"}).status_code == 503
+    assert trace.exists()  # a missing API key must not delete the last run's trace

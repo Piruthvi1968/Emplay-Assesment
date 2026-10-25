@@ -13,6 +13,7 @@ from app.agents.validator_agent import (
     ValidatorAgent,
     Verdict,
     confidence_for,
+    datetime_problems,
     format_problem,
     key_facts,
     latest_change,
@@ -369,3 +370,11 @@ def test_history_grows_one_entry_per_call(make_ctx) -> None:
     second = agent(state)
     assert len(second["history"]["Title"]) == 2
     assert [check.attempts for _, check in second["history"]["Title"]] == [1, 2]
+
+
+def test_time_zones_written_as_words_are_accepted() -> None:
+    spec = FieldSpec(name="Due Date", group="g", type="datetime", question="q")
+    assert format_problem("2025-03-10 10:30 Pacific", spec) is None
+    assert format_problem("2025-03-10 10:30 Eastern Time", spec) is None
+    assert format_problem("2025-03-10 10:30 Pacific 1", spec) is not None
+    assert datetime_problems("2025-03-10 10:30 Pacific", ["Bids due March 10, 2025, 10:30 a.m. Pacific"]) == ([], [])

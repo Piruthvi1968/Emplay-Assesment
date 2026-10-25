@@ -98,3 +98,13 @@ def test_facts_in_the_passage_header_count_as_cited() -> None:
     )
     resp, _ = answer_question(FakeLLM({"DraftAnswer": draft}), "When is it due?", PLAN, evidence, "run1")
     assert resp.warnings == []  # the id is in the file name the model saw, not in the passage text
+
+
+def test_a_quote_under_the_wrong_number_is_moved_to_its_passage() -> None:
+    from app.agents.evidence import locate
+
+    by_number = {1: EVIDENCE[0].hits[0], 2: EVIDENCE[0].hits[1]}
+    moved = locate(CitedQuote(evidence=1, quote="Solicitation Due 27-JUN-2024"), by_number)
+    assert moved is by_number[2]  # the quote is only in passage 2
+    kept = locate(CitedQuote(evidence=1, quote="a quote that is nowhere"), by_number)
+    assert kept is by_number[1]  # not found anywhere: the cited number stays (the validator flags it)

@@ -17,12 +17,9 @@ def test_pages_tables_and_empty_flag(tmp_path: Path) -> None:
     assert [p.page_number for p in doc.pages] == [1, 2, 3]
     assert doc.pages[0].printed_page == "1 of 3"
 
-    tables = [b for b in doc.pages[0].blocks if b.kind == "table"]
-    assert len(tables) == 1
-    assert "| SKU | Description |" in tables[0].text
-    assert "210-BLYZ" in tables[0].text  # hyphenated IDs survive intact
-    text = next(b for b in doc.pages[0].blocks if b.kind == "text").text
-    assert "210-BLYZ" not in text  # table area is not duplicated in the running text
+    page_text = "\n".join(b.text for b in doc.pages[0].blocks)
+    assert "| SKU | Description |\n|---|---|\n| 210-BLYZ | Base laptop |" in page_text  # IDs intact
+    assert page_text.count("210-BLYZ") == 1  # the table area is not duplicated in the running text
 
     assert not any(p.empty_or_scanned for p in doc.pages)
 
@@ -52,3 +49,17 @@ def test_layout_table_is_not_a_grid() -> None:
     assert table_to_markdown(merged) is None
     grid = [["Line", "Item", "Qty"], ["1", "Laptop", "30"]]
     assert table_to_markdown(grid).splitlines()[0] == "| Line | Item | Qty |"
+
+
+def test_tables_sit_where_they_are_on_the_page() -> None:
+    from app.ingestion.pdf_parser import body_blocks
+
+    small = "| Description | Response |\n|---|---|\n| Make and model | |"
+    rows = [f"| Laptop model {i} with a long description | {i} |" for i in range(12)]
+    big = "| Item | Qty |\n|---|---|\n" + "\n".join(rows)
+    body = [(100.0, "2.2.1 Line 1 Laptop"), (300.0, "2.2.2 Line 2 Tablet"), (500.0, "Closing text")]
+    grids = [(pymupdf.Rect(0, 400, 500, 450), big), (pymupdf.Rect(0, 200, 500, 250), small)]
+    blocks = body_blocks(body, grids)
+    assert [b.kind for b in blocks] == ["text", "table", "text"]
+    assert blocks[0].text == f"2.2.1 Line 1 Laptop\n\n{small}\n\n2.2.2 Line 2 Tablet"  # small grid stays in its text
+    assert blocks[1].text == big and blocks[2].text == "Closing text"  # big grid before the text below it

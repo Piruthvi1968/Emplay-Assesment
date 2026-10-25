@@ -140,6 +140,8 @@ class SearchEngine:
 
         `mode` defaults to `search.default_mode` in config.yaml; the other modes exist for the eval.
         """
+        if top_k < 1:
+            return []
         start = time.perf_counter()
         mode = mode or self.cfg.default_mode
         sq = SubQuery(question=sub_query) if isinstance(sub_query, str) else sub_query

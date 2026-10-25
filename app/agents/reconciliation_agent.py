@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from app.agents.base import AgentContext, agent_node
-from app.agents.evidence import number_evidence
+from app.agents.evidence import CitedQuote, locate, number_evidence
 from app.agents.extraction_agent import normalize_value
 from app.agents.prompts import RECONCILE_PROMPT, RECONCILE_SYSTEM
 from app.agents.state import BidState
@@ -21,8 +21,7 @@ class ProposedChange(BaseModel):
     field: str
     change_type: Literal["override", "clarification"]
     new_value: str | list[str] | None
-    evidence: int
-    quote: str
+    citations: list[CitedQuote]  # one per fact the new value relies on
     reason: str
 
 
@@ -96,21 +95,23 @@ class ReconciliationAgent:
 
         applied: list[AddendumChange] = []
         for ch in result.changes:
-            hit = by_number.get(ch.evidence)
-            if ch.field not in drafts or hit is None:
+            sources = [
+                Source(
+                    file=m.file_name, page=m.page_number, section=m.section, chunk_id=m.chunk_id, quote=c.quote.strip()
+                )
+                for c in ch.citations
+                if (hit := locate(c, by_number)) and (m := hit.chunk.meta)
+            ]
+            if ch.field not in drafts or not sources:
                 self.ctx.trace.log(
                     "reconciliation",
                     "decision",
                     addendum=label,
                     skipped=ch.field,
-                    reason="unknown field or evidence number",
+                    reason="unknown field or no valid evidence number",
                 )
                 continue
-            m = hit.chunk.meta
-            source = Source(
-                file=m.file_name, page=m.page_number, section=m.section, chunk_id=m.chunk_id, quote=ch.quote.strip()
-            )
-            applied.append(self.apply(drafts[ch.field], ch, source, label, specs[ch.field].type))
+            applied.append(self.apply(drafts[ch.field], ch, sources, label, specs[ch.field].type))
         self.ctx.trace.log(
             "reconciliation",
             "decision",
@@ -121,24 +122,26 @@ class ReconciliationAgent:
         return applied
 
     @staticmethod
-    def apply(draft: FieldResult, ch: ProposedChange, source: Source, label: str, field_type: str) -> AddendumChange:
-        """Override: the addendum value replaces the old one and becomes the only source.
-        Clarification: the value may be refined; the addendum is added as an extra source."""
+    def apply(
+        draft: FieldResult, ch: ProposedChange, sources: list[Source], label: str, field_type: str
+    ) -> AddendumChange:
+        """Override: the addendum value replaces the old one and its citations become the only sources.
+        Clarification: the value may be refined; the addendum citations are added as extra sources."""
         old = draft.value
         new = normalize_value(ch.new_value, field_type)
         if old is None and new is not None:  # the addendum supplies what the base documents lacked
             draft.notes = draft.notes.replace("Not found in documents", "").strip(" .")
             draft.confidence = max(draft.confidence, 0.85)
         if ch.change_type == "override" and new is not None:
-            draft.value, draft.sources = new, [source]
+            draft.value, draft.sources = new, sources
             draft.confidence = max(draft.confidence, 0.9)  # an explicit replacement in a later official document
-            earlier = f"Notes on the original value: {draft.notes}" if draft.notes else ""
-            draft.notes = _sentences(f"Changed by {label} (original: {_show(old)})", ch.reason, earlier)
+            # the earlier notes discussed the replaced value; the original itself is kept in this note
+            draft.notes = _sentences(f"Changed by {label} (original: {_show(old)})", ch.reason)
         else:
             if new is not None:
                 draft.value = new
             if draft.value is not None:  # a null value carries no sources; the clarification lives in the notes
-                draft.sources = [*draft.sources, source]
+                draft.sources = [*draft.sources, *sources]
             draft.notes = _sentences(draft.notes, f"{label}: {ch.reason}")
         return AddendumChange(
             field=ch.field,
@@ -146,5 +149,5 @@ class ReconciliationAgent:
             old_value=old,
             new_value=draft.value,
             addendum=label,
-            source=source,
+            source=sources[0],
         )

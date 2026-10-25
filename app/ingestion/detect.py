@@ -24,7 +24,9 @@ _TYPE_RULES: list[tuple[DocType, re.Pattern[str]]] = [
     ("form", re.compile(r"\bforms?\b|\battachment\b|\bexhibit\b", re.I)),
 ]
 
-_ADDENDUM_NO = re.compile(r"addendum\s*(?:no\.?|number|#)?\s*(\d+)", re.I)
+_ADDENDUM_NO = re.compile(r"(?:addendum|amendment)\s*(?:no\.?|number|#)?\s*(\d+)", re.I)
+# a date right after these words is a deadline mentioned in the text, not the document's own date
+_DEADLINE_BEFORE = re.compile(r"(?:due|deadline|closing|close|submit\w*|extend\w*|until|by)\W+(?:\w+\W+){0,6}$", re.I)
 
 _DATE_PATTERNS = [
     r"\b\d{1,2}-[A-Za-z]{3}-\d{4}\b",  # 27-JUN-2024
@@ -65,13 +67,19 @@ def detect_addendum_number(file_name: str, first_page_text: str) -> int | None:
     return None
 
 
+def _is_deadline(text: str, start: int) -> bool:
+    """'The new due date for this RFP will be July 9, 2024': a deadline the document mentions, not its own date."""
+    return _DEADLINE_BEFORE.search(text[max(0, start - 60) : start]) is not None
+
+
 def detect_doc_date(first_page_text: str) -> str | None:
     """ISO date (YYYY-MM-DD) of the document: a labelled date if present, else the first date near the top."""
     m = _DATE_LABELLED.search(first_page_text)
     candidate = m.group(1) if m else None
     if candidate is None:
-        m = _DATE_ANY.search(first_page_text[: _TOP_CHARS * 3])
-        candidate = m.group(0) if m else None
+        top = first_page_text[: _TOP_CHARS * 3]
+        dates = [m for m in _DATE_ANY.finditer(top) if not _is_deadline(top, m.start())]
+        candidate = dates[0].group(0) if dates else None
     if candidate is None:
         return None
     try:

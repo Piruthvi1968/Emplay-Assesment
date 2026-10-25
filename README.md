@@ -1,5 +1,7 @@
 # RFP Intelligence Platform
 
+**Demo video:** [watch on Google Drive](https://drive.google.com/file/d/1kofiUmyEYLxVPA6ry9ANQKr2XrihD7oD/view?usp=sharing)
+
 A RAG search engine over procurement bid documents (PDF and HTML, including addenda) and a LangGraph
 multi-agent system that uses it as a tool to:
 
@@ -50,7 +52,7 @@ so the API (which spends the API key) is not reachable from the network.
 ### Tests
 
 ```bash
-pytest -q          # 106 tests, no network: fake LLM, embedder, re-ranker and API
+pytest -q          # 115 tests, no network: fake LLM, embedder, re-ranker and API
 ruff check . && ruff format --check .
 ```
 CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on every push, in two jobs: **tests** (lint + pytest)
@@ -98,7 +100,9 @@ extraction) and **Compare** (the side-by-side report). It only calls the REST AP
 
 ```mermaid
 flowchart TB
-  subgraph Ingestion["Ingestion (app/ingestion)"]
+  API["CLI (main.py) / FastAPI / web UI"]
+
+  subgraph Ingestion["1 - Ingestion (app/ingestion)"]
     F["Bid folder: PDF + HTML"] --> P["Parse: PyMuPDF / BeautifulSoup<br/>label: doc_type, addendum #, date"]
     P --> CL["Clean: margin headers/footers, line joins"]
     CL --> C["Chunk: heading-aware, ~400 tokens, tables kept whole"]
@@ -107,7 +111,7 @@ flowchart TB
     V --> B["BM25 index (in memory)"]
   end
 
-  subgraph Search["Search engine (app/search) - the agents' tool"]
+  subgraph Search["2 - Search engine (app/search): the agents' tool"]
     Q["Query or sub-queries"] --> D["Dense top 20"]
     Q --> K["BM25 top 20"]
     D --> R["RRF fusion (k=60) + exact-ID pinning"]
@@ -118,7 +122,7 @@ flowchart TB
   V -.-> D
   B -.-> K
 
-  subgraph Extract["Extraction mode (LangGraph, shared BidState)"]
+  subgraph Extract["3a - Extraction mode (LangGraph, shared BidState)"]
     O1["Orchestrator: plan fields"] --> IA["Ingestion agent"]
     IA --> RA["Retrieval agent: per-field queries,<br/>base documents only"]
     RA -->|"Send x3, parallel"| EX["Extraction agents:<br/>overview/dates | commercial/legal | product/specs"]
@@ -127,21 +131,21 @@ flowchart TB
     VA --> OR{"Orchestrator review"}
     OR -->|"failed or empty fields, max 2 retries,<br/>with the rejection reason"| RA
     OR --> RP["Report: Bid Summary + JSON"]
+    RP --> OUT["outputs/BidN.json + trace"]
   end
 
-  subgraph QA["Q&A mode (same graph)"]
+  subgraph QA["3b - Q&A mode (same graph)"]
     O2["Orchestrator: query planner<br/>intent + sub-queries"] --> QR["Retrieval: main + addendum search<br/>per sub-query"]
     QR --> QN["Q&A agent: cited answer"]
     QN -->|"missing fact, 1 follow-up search"| QR
+    QN --> ANS["Answer + citations"]
   end
 
-  RA -. search tool .-> Q
-  QR -. search tool .-> Q
-  API["CLI (main.py) / FastAPI"] --> O1
-  API --> O2
-  API --> Search
-  RP --> OUT["outputs/BidN.json + trace"]
-  QN --> ANS["Answer + citations"]
+  API -->|index| F
+  H -. "search tool" .-> RA
+  H -. "search tool" .-> QR
+  API -->|extract| O1
+  API -->|ask| O2
 ```
 
 One `Runtime` object (`app/runtime.py`) builds the settings, search engine and LLM client once; the CLI and the
@@ -172,7 +176,9 @@ API both use it, so they behave identically.
 Heading-aware chunks of about **400 tokens (max 600) with 60 tokens of overlap**, never crossing a page, so every
 chunk has one exact page for citation. RFPs are structured (numbered sections, Q&A in addenda, tables), so
 splitting at headings keeps one requirement or one answered question per chunk. 400 tokens gives the re-ranker and
-the LLM enough context while keeping prompts small. Tables are kept whole, or split by rows with the header repeated.
+the LLM enough context while keeping prompts small. Tables are kept whole, or split by rows with the header repeated,
+and placed where they sit on the page so they carry the right section; small form tables (about 100 tokens) stay
+inside their paragraph instead of becoming tiny chunks of their own. A heading never forms a chunk on its own.
 Each chunk's stored text starts with a context line, `[Bid1 | Addendum 2 | p.1 | Section: …]`, which helps both
 BM25 and the embedder.
 
@@ -304,16 +310,22 @@ against the PDFs.
 
 | Configuration | Recall@1 | Recall@3 | Recall@5 | Recall@10 | MRR@10 | Avg latency |
 |---|---|---|---|---|---|---|
-| vector | 0.52 | 0.76 | 0.84 | 0.92 | 0.644 | 7 ms |
-| hybrid (dense + BM25 + RRF) | 0.52 | 0.84 | 0.88 | 1.00 | 0.695 | 8 ms |
-| **hybrid_rerank** (+ pinning + cross-encoder) | **0.60** | **0.88** | **0.92** | **1.00** | **0.747** | 707 ms |
+| vector | 0.52 | 0.76 | 0.84 | 0.92 | 0.658 | 9 ms |
+| hybrid (dense + BM25 + RRF) | 0.52 | 0.84 | 0.88 | 1.00 | 0.689 | 9 ms |
+| **hybrid_rerank** (+ pinning + cross-encoder) | **0.60** | **0.92** | **0.92** | **1.00** | **0.758** | 860 ms |
 
 Reproduce with `python main.py eval`. BM25 fixes exact identifiers (vector search misses `210-BLYZ` entirely), and
-the re-ranker moves the right passage up (MRR +0.05). The report also has a per-question rank table.
+the re-ranker moves the right passage up (MRR +0.07). The report also has a per-question rank table.
+
+**Second, independent query set.** Before the demo a separate review wrote 61 more queries (misspellings, vague
+wording, table rows, BidNet-only facts, filters) and located every answer in the documents by hand. With
+hybrid + re-rank, 47 are answered at rank 1 and 60 in the top 5 (MRR 0.869); vector search alone gets 31 and 46.
+That review also led to two chunking fixes (tables kept with the section they belong to, no heading-only chunks),
+which cut the index from 245 to 214 chunks and removed 21 duplicate stub chunks.
 
 **Not-found threshold:** the score distributions of relevant and irrelevant passages overlap on this set (on-topic
-but non-answering passages score high), so the threshold stays at 0.0 and only flags sub-queries with no plausible
-evidence. Not-found decisions are made by the LLM from the evidence and enforced by the validator, not by a score
+but non-answering passages score high, and correct answers in tables or misspelled queries score as low as −10.8),
+so the threshold is set to −12, below every correct answer, and only flags sub-queries with no plausible evidence. Not-found decisions are made by the LLM from the evidence and enforced by the validator, not by a score
 cut-off.
 
 ### Extraction results
@@ -336,7 +348,7 @@ check warnings. In an earlier run the answer checks caught a real slip: an outsi
 
 | Bonus | Status |
 |---|---|
-| Docker + CI that runs the tests **and the retrieval evaluation** | Done: `docker compose up` (API + UI); GitHub Actions runs lint + 106 tests and a retrieval-eval job that fails if MRR drops below 0.70 |
+| Docker + CI that runs the tests **and the retrieval evaluation** | Done: `docker compose up` (API + UI); GitHub Actions runs lint + 115 tests and a retrieval-eval job that fails if MRR drops below 0.70 |
 | Web UI for search and chat | Done: Streamlit, four tabs (above) |
 | Bid comparison report | Done: `main.py compare` / `GET /compare` / UI tab, built from the saved records with no LLM. Q&A also handles comparison questions (`compare` intent: one sub-query per bid) |
 | Cost and latency tracking per run | Done: every LLM call is traced with model, tokens and latency; each record's `run_info` has calls, tokens, **cost in USD** (prices per model in `config.yaml`) and duration; the Q&A log shows latency and cost per question; the CLI prints them after each run |
@@ -378,7 +390,9 @@ check warnings. In an earlier run the answer checks caught a real slip: an outsi
   is labelled `form`. Extraction is unaffected (it only separates addenda from base documents).
 - **LLM output varies between runs:** values are stable on these bids, but wording, notes and confidence move
   slightly.
-- HTML pages have no page numbers. Re-ranking runs on CPU (~0.7 s per search).
+- HTML pages have no page numbers. Re-ranking runs on CPU (~0.9 s per search).
+- **Folder housekeeping is basic:** deleting a whole bid folder leaves its chunks in the index (files deleted inside a
+  folder are cleaned up), nested subfolders are ignored, and the same file under two names is indexed twice.
 
 ---
 
@@ -402,7 +416,7 @@ app/
   api/server.py            FastAPI: /health /index /search /ask /extract /records
   ui/streamlit_app.py      web UI: chat, search, extracted records (a client of the API)
 eval/                      eval_set.json, run_eval.py, report.md, qa_log.py
-tests/                     106 tests: parsing, chunking, tokenizer, fusion, engine, planner, LLM client,
+tests/                     115 tests: parsing, chunking, tokenizer, fusion, engine, planner, LLM client,
                            validator, API, web UI, full graph with a fake LLM
 outputs/                   BidN.json, comparison.md, qa_log.md, traces/
 data/                      Bid1, Bid2 (input folders)

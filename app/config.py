@@ -53,7 +53,7 @@ class SearchCfg(BaseModel):
     addendum_k_single: int = 2
     addendum_k_multi: int = 1
     max_sub_queries: int = 4
-    not_found_threshold: float = 0.0
+    not_found_threshold: float = -12.0
     enable_pinning: bool = True
 
 

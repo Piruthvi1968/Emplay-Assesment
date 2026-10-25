@@ -62,6 +62,8 @@ def test_chunks_never_cross_pages_and_section_carries_over() -> None:
 def test_heading_rules() -> None:
     assert is_heading("1.2 Terms")
     assert is_heading("SCOPE OF WORK")
+    assert is_heading('INTERLOCAL AGREEMENT ("Rider") CONSENT FORM')  # nearly all caps
+    assert not is_heading("Dell Latitude 5550 XCTO Base")
     assert not is_heading("ALZATE, JASMINE")  # a name, not a heading
     assert not is_heading("80 Calvert Street, Room 109")
     assert not is_heading("1. The vendor shall provide all labor and materials.")
@@ -85,3 +87,15 @@ def test_cleaning_joins_fragments_and_fixes_emails() -> None:
     assert normalize_chars("vendors’ “quote”") == 'vendors\' "quote"'
     assert normalize_chars("a@treasurer.state.md .us") == "a@treasurer.state.md.us"
     assert normalize_chars("b@treasurer.state.\nmd.us") == "b@treasurer.state.md.us"
+
+
+def test_a_lone_heading_travels_with_the_next_paragraph() -> None:
+    paragraph = " ".join(["requirement"] * 40)  # ~ 120 tokens: over the target, under the max
+    chunks = pack_units(["INSURANCE AND/OR BONDS", paragraph], target=100, max_tokens=150, overlap=15)
+    assert len(chunks) == 1 and chunks[0].startswith("INSURANCE AND/OR BONDS\nrequirement")
+
+
+def test_heading_only_bodies_are_not_chunks() -> None:
+    page = ParsedPage(page_number=1, blocks=[Block(kind="text", text="END OF ADDENDUM")])
+    doc = ParsedDoc(file_name="a.pdf", pages=[page])
+    assert chunk_doc(doc, bid_id="B", doc_type="addendum", addendum_number=1, doc_date=None, cfg=CFG) == []
