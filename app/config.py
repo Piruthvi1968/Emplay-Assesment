@@ -90,6 +90,7 @@ class FieldSpec(BaseModel):
     hints: list[str] = Field(default_factory=list)
     format: str | None = None
     judge: bool = False  # free-text field: the validator also asks an LLM judge whether the quotes support it
+    exclude_doc_types: list[str] = Field(default_factory=list)  # e.g. blank forms that crowd out the real answer
 
 
 class Settings(BaseModel):

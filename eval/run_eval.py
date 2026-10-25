@@ -173,7 +173,12 @@ def write_report(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def main(eval_path: Path = EVAL_DIR / "eval_set.json", report_path: Path = EVAL_DIR / "report.md") -> int:
+def main(
+    eval_path: Path = EVAL_DIR / "eval_set.json",
+    report_path: Path = EVAL_DIR / "report.md",
+    min_mrr: float | None = None,
+) -> int:
+    """Run the eval; with `min_mrr`, fail (exit 1) when hybrid_rerank MRR is below it (a CI quality gate)."""
     items = json.loads(eval_path.read_text(encoding="utf-8"))
     engine = SearchEngine.from_settings()
     if not engine.chunks():
@@ -191,6 +196,10 @@ def main(eval_path: Path = EVAL_DIR / "eval_set.json", report_path: Path = EVAL_
         sm = summaries[m]
         print(f"{m:<14}" + "".join(f"{sm[f'R@{k}']:<8.2f}" for k in KS) + f"{sm['MRR']:<8.3f}{sm['ms']:.0f}")
     print(f"not-found threshold suggestion: {calib['suggested']}  (report: {report_path})")
+    mrr = summaries["hybrid_rerank"]["MRR"]
+    if min_mrr is not None and mrr < min_mrr:
+        print(f"FAILED: hybrid_rerank MRR {mrr:.3f} is below the required {min_mrr:.3f}")
+        return 1
     return 0
 
 

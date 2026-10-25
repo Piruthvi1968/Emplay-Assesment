@@ -14,7 +14,8 @@ from dateutil import parser as date_parser
 from app.models import DocType
 
 # Checked in this order; the first match wins. Addendum comes first because addendum
-# file names usually also contain "RFP".
+# file names usually also contain "RFP". "form" is a weak catch-all: a generic name such as
+# "Attachment_A.pdf" must not hide a first page that says "Affidavit" or "Quote".
 _TYPE_RULES: list[tuple[DocType, re.Pattern[str]]] = [
     ("addendum", re.compile(r"\baddend(um|a)\b|\bamendment\b", re.I)),
     ("affidavit", re.compile(r"affidavit", re.I)),
@@ -46,12 +47,12 @@ def detect_doc_type(file_name: str, first_page_text: str) -> DocType | None:
         return "bid_page"
     stem = Path(file_name).stem.replace("_", " ")
     top = first_page_text[:_TOP_CHARS]
-    for doc_type, pattern in _TYPE_RULES:
-        if pattern.search(stem):
-            return doc_type
-    for doc_type, pattern in _TYPE_RULES:
-        if pattern.search(top):
-            return doc_type
+    strong, weak = _TYPE_RULES[:-1], _TYPE_RULES[-1:]
+    for rules in (strong, weak):
+        for text in (stem, top):
+            for doc_type, pattern in rules:
+                if pattern.search(text):
+                    return doc_type
     return None
 
 

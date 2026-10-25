@@ -65,12 +65,13 @@ fields:
   - name: Any Additional Documentation Required
     group: commercial_legal
     type: list
-    question: "Which affidavits, forms, certificates, insurance or other documents must be submitted?"
-    hints: [affidavit, forms, W-9, W9, certificate of insurance, attachments, must be submitted, acknowledge addendum]
+    question: "Which affidavits, forms, certificates, insurance or other documents must the bidder provide, with the proposal or later (e.g. upon award)? Say when each is due if the documents state it."
+    hints: [affidavit, forms, W-9, W9, certificate, certificate of insurance, attachments, must be submitted, must provide, upon award, acknowledge addendum]
+    exclude_doc_types: [affidavit, form]  # search what the solicitation requires, not the blank forms' own text
   - name: MFG for Registration
     group: commercial_legal
     type: text
-    question: "Which manufacturer(s) must the bidder be registered or authorized with? If no manufacturer is named but the bidder must be the manufacturer or a manufacturer-authorized reseller, state that requirement."
+    question: "Which manufacturer(s) must the bidder be registered or authorized with? If no manufacturer is named, state the manufacturer or reseller qualification the solicitation sets (for example a section that admits manufacturers or authorized resellers) and any certification it requires."
     hints: [manufacturer, authorized reseller, letter of authorization, OEM, factory-authorized]
   - name: Contract or Cooperative to use
     group: commercial_legal

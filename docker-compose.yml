@@ -3,7 +3,7 @@ services:
     build: .
     image: emplay-rfp-intelligence
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - path: .env
         required: false
@@ -12,3 +12,15 @@ services:
       - ./index:/app/index
       - ./outputs:/app/outputs
     command: python main.py serve
+
+  ui:
+    image: emplay-rfp-intelligence
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:8501:8501"
+    environment:
+      RFP_API_URL: http://api:8000
+      RFP_PUBLIC_API_URL: http://localhost:8000
+      STREAMLIT_SERVER_HEADLESS: "true"
+    command: python main.py ui

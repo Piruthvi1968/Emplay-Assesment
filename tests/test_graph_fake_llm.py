@@ -394,3 +394,51 @@ def test_chitchat_is_answered_by_the_planner(tmp_path: Path, settings: Settings,
     assert response.intent == "chitchat" and response.answer == "Hello! Ask me about the indexed bids."
     assert response.citations == []
     assert [c["schema"] for c in llm.calls] == ["QueryPlan"]
+
+
+def test_failed_search_is_reported_not_called_not_found(
+    tmp_path: Path, settings: Settings, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    llm = fake_llm()
+    runtime = make_runtime(tmp_path, settings, llm)
+    runtime.index(folder)
+
+    def broken(self: SearchEngine, plan: QueryPlan) -> list:
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(SearchEngine, "gather_evidence", broken)
+    response = runtime.ask("When is BidT due?")
+    assert "could not be searched" in response.answer and "database is locked" in response.answer
+    assert not response.answer.startswith("Not found") and response.warnings
+    assert [c["schema"] for c in llm.calls] == ["QueryPlan"]  # no answer call without evidence
+
+
+def test_failed_follow_up_search_ends_the_loop(
+    tmp_path: Path, settings: Settings, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    llm = fake_llm(DraftAnswer=answer_reply(["original solicitation due date"]))
+    runtime = make_runtime(tmp_path, settings, llm)
+    runtime.index(folder)
+    real = SearchEngine.gather_evidence
+    calls: list[int] = []
+
+    def fails_on_follow_up(self: SearchEngine, plan: QueryPlan) -> list:
+        calls.append(1)
+        if len(calls) > 1:
+            raise RuntimeError("database is locked")
+        return real(self, plan)
+
+    monkeypatch.setattr(SearchEngine, "gather_evidence", fails_on_follow_up)
+    response = runtime.ask("When is BidT due?")
+    assert len(calls) == 2  # the first search, then the failed follow-up; no retry loop
+    assert response.citations and any("database is locked" in w for w in response.warnings)
+    assert sum(c["schema"] == "DraftAnswer" for c in llm.calls) == 2
+
+
+def test_field_can_exclude_document_types(tmp_path: Path, settings: Settings, folder: Path) -> None:
+    make_runtime(tmp_path, settings, fake_llm()).extract(folder)
+    searches = {e["question"]: e["filters"] for e in trace_events(settings) if e.get("tool") == "search"}
+    for spec in settings.fields:
+        if spec.type != "summary":
+            assert searches[spec.question]["exclude_doc_types"] == ["addendum", *spec.exclude_doc_types]
+    assert any(spec.exclude_doc_types for spec in settings.fields)

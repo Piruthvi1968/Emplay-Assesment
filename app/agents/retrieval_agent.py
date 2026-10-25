@@ -79,9 +79,11 @@ class RetrievalAgent:
         for name in state["fields_todo"]:
             attempts[name] = attempts.get(name, 0) + 1
             wide = attempts[name] > 1
-            sq = self.field_query(self.ctx.specs[name], wide)
+            spec = self.ctx.specs[name]
+            sq = self.field_query(spec, wide)
             top_k = cfg.extraction_top_k_retry if wide else cfg.extraction_top_k
-            hits = self.search(sq, 2 * top_k, bid_ids=[state["bid_id"]], exclude_doc_types=["addendum"])
+            excluded = ["addendum", *spec.exclude_doc_types]
+            hits = self.search(sq, 2 * top_k, bid_ids=[state["bid_id"]], exclude_doc_types=excluded)
             evidence[name] = diversify(hits, top_k, cfg.extraction_max_per_file)
         return {
             "evidence": evidence,
@@ -90,7 +92,11 @@ class RetrievalAgent:
             "extraction_issues": {name: [] for name in state["fields_todo"]},  # clear last round's issues
         }
 
-    @agent_node("qa_retrieval")
+    def _qa_failed(self, state: dict, exc: Exception) -> dict:
+        """A failed search ends the follow-up loop; the answer agent reports the error instead of "not found"."""
+        return {"follow_ups": [], "qa_round": state.get("qa_round", 0) + 1}
+
+    @agent_node("qa_retrieval", on_error=_qa_failed)
     def for_question(self, state: BidState) -> dict:
         """Main + addendum evidence per sub-query; on a follow-up round, extra searches the answer agent asked for."""
         plan = state["plan"]

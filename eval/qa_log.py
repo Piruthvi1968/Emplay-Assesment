@@ -58,6 +58,8 @@ def format_entry(n: int, question: str, response: QAResponse, seconds: float, us
             quote = " ".join(src.quote.split())
             lines.append(f'- [{k}] {src.file}, {where} — "{quote}"')
         lines.append("")
+    if response.warnings:
+        lines += ["**Answer checks**", "", *(f"- {w}" for w in response.warnings), ""]
     lines.append(
         f"*Latency {seconds:.1f} s · {usage['calls']} LLM calls · "
         f"{usage['in_tokens']}/{usage['out_tokens']} tokens in/out · ${usage['cost_usd']:.4f}*"

@@ -8,3 +8,5 @@ __pycache__/
 .pytest_cache/
 outputs/
 data/
+CLAUDE.md
+BUILD_NOTES.md

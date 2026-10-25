@@ -82,7 +82,7 @@ class ReconciliationAgent:
         )
         fields = "\n".join(
             f"- {name} ({specs[name].type}{'; format ' + specs[name].format if specs[name].format else ''}): "
-            f"{_show(draft.value)}"
+            f"{_show(draft.value)}\n  question: {specs[name].question}"
             for name, draft in drafts.items()
         )
         prompt = RECONCILE_PROMPT.format(bid_id=bid_id, addendum=label, fields=fields, evidence=text)

@@ -1,5 +1,8 @@
 """All LLM prompt templates in one place, so they can be reviewed and tuned without touching agent code."""
 
+DATE_STYLE = """Write every date as YYYY-MM-DD and every time as 24-hour HH:MM followed by the time zone when \
+the source states one (e.g. 2024-07-09 14:00 CST), whatever format the source uses. Quotes stay verbatim."""
+
 PLANNER_SYSTEM = """You plan searches over a library of procurement bid documents (RFPs, addenda, \
 bid portal pages, specifications, affidavits). You never answer the question yourself.
 
@@ -31,7 +34,7 @@ PLANNER_PROMPT = """Bids in the library:
 User message:
 {question}"""
 
-ANSWER_SYSTEM = """You answer questions about procurement bid documents using ONLY the numbered evidence \
+ANSWER_SYSTEM = f"""You answer questions about procurement bid documents using ONLY the numbered evidence \
 provided. Do not use outside knowledge.
 
 Rules:
@@ -43,6 +46,7 @@ Rules:
 - When documents disagree, give the latest valid value and mention the earlier one.
 - For each citation, copy a short supporting quote verbatim from that evidence (at most 300 characters).
 - Keep the combined answer concise: a few sentences or a short list.
+- {DATE_STYLE}
 - If a fact needed for a complete answer is missing from the evidence but probably exists elsewhere in the \
 same bid's documents (for example the original value of something an addendum changed), put up to 2 short \
 search queries for it in follow_up_queries. Otherwise leave follow_up_queries empty."""
@@ -51,7 +55,7 @@ ANSWER_PROMPT = """Question: {question}
 
 {evidence}"""
 
-EXTRACTION_SYSTEM = """You are an extraction specialist for procurement bid documents. You fill structured \
+EXTRACTION_SYSTEM = f"""You are an extraction specialist for procurement bid documents. You fill structured \
 fields using ONLY the numbered evidence. Do not use outside knowledge.
 
 The evidence comes from the bid's base documents (solicitation, specifications, bid portal page, forms). \
@@ -85,6 +89,7 @@ document and list the others in notes. Bid portal pages may already reflect late
 solicitation and mention the portal value in notes.
 - Keep the documents' wording for names, numbers and labels, including typos and contradictory labels; do not \
 correct the source. Mention contradictions in notes.
+- In notes and text values: {DATE_STYLE}
 - If a previous answer was rejected, fix the stated problem."""
 
 EXTRACTION_PROMPT = """Bid: {bid_id}
@@ -96,8 +101,8 @@ Fields to extract:
 Evidence (grouped by the field it was retrieved for; any number may be cited for any field):
 {evidence}"""
 
-RECONCILE_SYSTEM = """You review one addendum of a procurement solicitation and decide which extracted fields \
-it affects. You get the current value of each field (extracted from the base documents) and the addendum text \
+RECONCILE_SYSTEM = f"""You review one addendum of a procurement solicitation and decide which extracted fields \
+it affects. You get each field's question and current value (extracted from the base documents) and the addendum text \
 as numbered evidence.
 
 For each affected field return one change:
@@ -109,8 +114,9 @@ fields the full list including unchanged items), or null when the value stays th
 
 Rules:
 - Report only fields the addendum actually affects; most fields are usually unaffected.
-- If a field's current value is null and the addendum provides that information (e.g. an answer about \
-delivery timing), report a clarification whose new_value states it.
+- If a field's current value is null and the addendum answers that field's question (e.g. an answer about \
+delivery timing), report a clarification whose new_value states it. A fact on a related topic that does not answer \
+the field's question is not a value for it.
 - new_value must be an actual value for the field (a date, name, number, product or requirement). A statement \
 that the information will be supplied later or by the vendor (e.g. "the vendor proposes the model") is not a \
 value: keep new_value null and explain it in reason.
@@ -118,7 +124,7 @@ value: keep new_value null and explain it in reason.
 change. Questions from vendors are not facts; the district's answers are.
 - Cite the evidence number and copy the supporting sentence verbatim (at most 300 characters).
 - reason: one sentence explaining the change.
-- Use only the addendum evidence; keep the formats of the fields."""
+- Use only the addendum evidence; keep the formats of the fields. In reasons: {DATE_STYLE}"""
 
 RECONCILE_PROMPT = """Bid: {bid_id}
 Addendum: {addendum}
@@ -132,14 +138,15 @@ Addendum text:
 JUDGE_SYSTEM = """You check extracted bid fields against the text they cite. For each field answer:
 - "yes": the cited text fully supports the value;
 - "partial": the value is partly supported, over-generalised or misses an important qualifier in the text;
-- "no": the cited text does not support the value or contradicts it.
+- "no": the cited text does not support the value or contradicts it, or the value does not answer the field's \
+question (a related but different fact).
 Judge only against the cited text given, with a one-sentence reason."""
 
 JUDGE_PROMPT = """{fields}"""
 
-SUMMARY_SYSTEM = """You write a concise summary of a procurement bid for a sales team: who is buying what, \
+SUMMARY_SYSTEM = f"""You write a concise summary of a procurement bid for a sales team: who is buying what, \
 the key dates, how to submit, and the main requirements. Use only the numbered facts, cite them in square \
-brackets, and write 3 to 6 sentences. Say plainly when an important fact was not found."""
+brackets, and write 3 to 6 sentences. Say plainly when an important fact was not found. {DATE_STYLE}"""
 
 SUMMARY_PROMPT = """Bid: {bid_id}
 

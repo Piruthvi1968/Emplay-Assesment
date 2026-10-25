@@ -1,14 +1,17 @@
-"""FastAPI server: /health, /index, /search, /ask, /extract. Interactive docs at /docs."""
+"""FastAPI server: /health, /index, /search, /ask, /extract, /records, /compare. Interactive docs at /docs."""
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Path, Query, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, model_validator
 
+from app.comparison import compare_markdown, load_records
 from app.llm_client import LLMError
 from app.models import BidRecord, DocType, IngestReport, QAResponse, SearchHit
 from app.runtime import Runtime
@@ -139,6 +142,23 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except LLMError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.get("/compare", response_class=PlainTextResponse)
+    def compare(
+        request: Request,
+        bid_id: Annotated[list[str] | None, Query(description="Bids to compare (repeatable; default: all)")] = None,
+    ) -> str:
+        """Side-by-side Markdown report of the saved extraction records (no LLM)."""
+        outputs = rt(request).settings.paths.outputs_dir
+        return compare_markdown(load_records(outputs, [b for b in bid_id or [] if re.fullmatch(r"[\w-]+", b)]))
+
+    @app.get("/records/{bid_id}")
+    def record(bid_id: Annotated[str, Path(pattern=r"^[\w.-]+$")], request: Request) -> BidRecord:
+        """The last saved extraction record of a bid (outputs/<bid_id>.json), without running anything."""
+        path = rt(request).settings.paths.outputs_dir / f"{bid_id}.json"
+        if bid_id.startswith(".") or not path.is_file():
+            raise HTTPException(status_code=404, detail=f"no saved record for {bid_id}; run POST /extract first")
+        return BidRecord.model_validate_json(path.read_text(encoding="utf-8"))
 
     return app
 

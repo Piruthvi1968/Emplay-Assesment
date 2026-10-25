@@ -90,3 +90,26 @@ def test_index_new_folder_then_search_it(client: TestClient, settings: Settings)
     assert "Bid3" in client.get("/health").json()["bids"]
     hits = client.get("/search", params={"q": "submission deadline", "bid_id": "Bid3"}).json()
     assert hits and hits[0]["bid_id"] == "Bid3"
+
+
+def test_records_returns_saved_extraction(tmp_path: Path, settings: Settings) -> None:
+    from app.agents.report_agent import fallback_record, save_record
+
+    settings.paths.outputs_dir = tmp_path / "outputs"
+    save_record(fallback_record("Bid1", settings, "boom", "run1"), settings)
+    with TestClient(create_app(_runtime(tmp_path, settings))) as c:
+        body = c.get("/records/Bid1").json()
+        assert body["bid_id"] == "Bid1" and len(body["fields"]) == len(settings.fields)
+        assert c.get("/records/Bid9").status_code == 404
+        assert c.get("/records/..").status_code == 404
+
+
+def test_compare_returns_markdown(tmp_path: Path, settings: Settings) -> None:
+    from app.agents.report_agent import fallback_record, save_record
+
+    settings.paths.outputs_dir = tmp_path / "outputs"
+    save_record(fallback_record("Bid1", settings, "boom", "run1"), settings)
+    with TestClient(create_app(_runtime(tmp_path, settings))) as c:
+        resp = c.get("/compare", params={"bid_id": "Bid1"})
+        assert resp.status_code == 200 and resp.headers["content-type"].startswith("text/plain")
+        assert "| Field | Bid1 |" in resp.text

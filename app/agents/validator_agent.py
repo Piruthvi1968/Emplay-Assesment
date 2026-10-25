@@ -98,6 +98,8 @@ def ungrounded_facts(value: FieldValue, cited_texts: list[str]) -> list[str]:
             ok = date.fromisoformat(fact) in dates
         elif _PHONE.fullmatch(fact):
             ok = re.sub(r"\D", "", fact) in phones
+        elif _NUMBER.fullmatch(fact):  # a plain number may touch letters or dashes: '27' in '27-JUN-2024'
+            ok = re.search(rf"(?<!\d){re.escape(fact)}(?!\d)", lower) is not None
         else:
             ok = re.search(rf"(?<![\w-]){re.escape(_join_units(fact.lower()))}(?![\w-])", lower) is not None
         if not ok:

@@ -19,3 +19,7 @@ docs/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Private planning and study notes (never pushed)
+CLAUDE.md
+BUILD_NOTES.md

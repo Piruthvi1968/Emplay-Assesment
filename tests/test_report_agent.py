@@ -47,6 +47,20 @@ def test_citations_are_renumbered_and_verified() -> None:
     assert resp.citations[1].quote.startswith("The new due date")  # unsupported quote replaced by real text
     assert resp.citations[0].page == 2
     assert follow_ups == []
+    assert resp.warnings == ["[2] quote is not in the cited passage; the closest line is shown instead"]
+
+
+def test_claims_must_be_in_the_passages_they_cite() -> None:
+    quote = CitedQuote(evidence=1, quote="The new due date for this RFP will be July 9, 2024")
+    draft = DraftAnswer(
+        answer="Due July 9, 2024 (file a.pdf) [1]. Bids open on 2024-07-10 [1]. Due 2024 again. Call 214-555-0100.",
+        parts=[DraftPart(sub_question="Due date?", answer="July 9, 2024", citations=[quote])],
+    )
+    resp, _ = answer_question(FakeLLM({"DraftAnswer": draft}), "When is it due?", PLAN, EVIDENCE, "run1")
+    assert resp.warnings == [
+        "2024-07-10 not found in the cited passage [1]",
+        "214-555-0100 not found in any cited passage",  # no marker: checked against every cited passage
+    ]
 
 
 def test_no_hits_means_not_found_without_llm_call() -> None:
@@ -73,3 +87,14 @@ def test_follow_up_queries_are_returned() -> None:
     draft = DraftAnswer(answer="Changed to July 9 [1].", parts=[], follow_up_queries=["original due date", "x", "y"])
     _, follow_ups = answer_question(FakeLLM({"DraftAnswer": draft}), "What changed?", PLAN, EVIDENCE, "r")
     assert follow_ups == ["original due date", "x"]  # at most 2
+
+
+def test_facts_in_the_passage_header_count_as_cited() -> None:
+    evidence = [SubEvidence(question="Due date?", hits=[_hit("RFP JA-1234", "Proposals are due July 9.")])]
+    quote = CitedQuote(evidence=1, quote="Proposals are due July 9.")
+    draft = DraftAnswer(
+        answer="RFP JA-1234 is due July 9 [1].",
+        parts=[DraftPart(sub_question="Due date?", answer="July 9", citations=[quote])],
+    )
+    resp, _ = answer_question(FakeLLM({"DraftAnswer": draft}), "When is it due?", PLAN, evidence, "run1")
+    assert resp.warnings == []  # the id is in the file name the model saw, not in the passage text

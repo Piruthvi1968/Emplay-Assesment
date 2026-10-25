@@ -12,6 +12,8 @@ def test_doc_type_from_file_name() -> None:
 def test_doc_type_from_first_page_and_fallback() -> None:
     assert detect_doc_type("XYZ-1 Devices FINAL.pdf", "PURCHASING\nRequest For Proposal 1234") == "rfp"
     assert detect_doc_type("notes.pdf", "nothing useful here") is None
+    assert detect_doc_type("Attachment_B.pdf", "CONTRACT AFFIDAVIT\nA. AUTHORITY") == "affidavit"
+    assert detect_doc_type("Attachment_D.pdf", "Price sheet") == "form"
     types = assign_doc_types({"a.pdf": None, "b.pdf": None, "c.html": "bid_page"}, {"a.pdf": 10, "b.pdf": 99})
     assert types == {"a.pdf": "other", "b.pdf": "rfp", "c.html": "bid_page"}
     # a folder that already has an RFP does not promote another file

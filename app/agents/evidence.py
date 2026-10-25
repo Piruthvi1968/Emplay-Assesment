@@ -65,10 +65,18 @@ def quote_supported(quote: str, text: str) -> bool:
     return bool(q) and (q in t or fuzz.partial_ratio(q, t) >= _QUOTE_MIN_SIMILARITY)
 
 
+def closest_line(quote: str, text: str) -> str:
+    """The line of `text` most similar to `quote`: the stand-in for a quote that is not in the text."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return text[:300]
+    return max(lines, key=lambda line: fuzz.ratio(_normalize(quote), _normalize(line)))[:300]
+
+
 def to_source(chunk: Chunk, quote: str) -> Source:
-    """A citation for `chunk`. An unsupported quote is replaced by the start of the chunk text."""
+    """A citation for `chunk`. An unsupported quote is replaced by the chunk's closest matching line."""
     body = chunk_body(chunk)
     if not quote_supported(quote, body):
-        quote = body[:300]
+        quote = closest_line(quote, body)
     m = chunk.meta
     return Source(file=m.file_name, page=m.page_number, section=m.section, chunk_id=m.chunk_id, quote=quote.strip())

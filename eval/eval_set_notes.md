@@ -44,14 +44,14 @@ Short file names used below:
 | q25 | addendum_change | "What changed in Addendum 2", with the addendum named in the question | B1-A2 p1: "extend the due date of this RFP" |
 | q26 | multi_topic | Two topics (contact and affidavit) in one question. Tests sub-query splitting | B2-PORFP p3: "Agency POC Name: Tamaira Hawkins"; B2-HTML: "Tamaira Hawkins"; B2-PORFP p2: "must provide a Mercury Affidavit" |
 
-## Ground-truth claims in CLAUDE.md §3 that differ or need care
+## Initial ground-truth notes that differ from the documents or need care
 
 1. **Page numbering in the Bid1 RFP.** Physical pages 1-40 carry the printed labels "Page 1 of 40" to "Page 40 of 40",
    so physical page = printed page for the first 40 pages. The two diverge only for the attached forms after p40
    (p41 onwards has M/WBE and other forms with their own numbering). The RFP header block (buyer, dates, pre-proposal,
    1.2 Terms) is on **physical p2**, not p1. Physical p1 has the RFP number and title.
 2. **Cooperative (Bid1).** Besides the EPCNT interlocal rider (p19), the RFP also has a **Central Texas Purchasing
-   Alliance (CTPA)** interlocal cooperative rider on p20. CLAUDE.md lists only EPCNT.
+   Alliance (CTPA)** interlocal cooperative rider on p20. The initial notes listed only EPCNT.
 3. **Bid2 due time.** The PORFP p1 gives only the date ("PROPOSAL DUE DATE and TIME: 06/10/2024", with no time). The
    time "02:00 PM EDT" comes only from the BidNet HTML (Closing Date).
 4. **Warranty minimums (Bid1).** The Addendum 1 Q7 answer is repeated word for word as the answer to Q29 (Addendum 1 p3).
@@ -59,7 +59,7 @@ Short file names used below:
    (Windows devices, desktops, monitors), so the addendum confirms them rather than changing them.
 5. **Certificate of insurance "within 10 days of award" (p17).** The p17 text says "The insurance form must be received
    within ten (10)" days (the continuation was not checked word for word). It is not used in the eval set.
-6. Everything else used here matched CLAUDE.md: the Addendum 2 due date; the Addendum 1 Q11 intent statement ("does
+6. Everything else used here matched the initial notes: the Addendum 2 due date; the Addendum 1 Q11 intent statement ("does
    not anticipate extending the submission deadline", Addendum 1 p1); the IDs; the contacts; the eMMA-only submission;
    45-day delivery; 060B5400007; the Mercury Affidavit; invoicing; the questions-due date 06/01/2024 2:00 PM EDT (PORFP p2);
    the "Clavert Street" typo (PORFP p1); the FA I / FA V header vs "FA II - Printers and Associated Peripherals" scope
@@ -67,4 +67,4 @@ Short file names used below:
 
 ## Added after the first eval run
 - **q27** (not_found, Bid2): "When is the pre-bid conference for the Dell laptop PORFP?". No Bid2 chunk mentions pre-bid, pre-proposal or conference (checked with a regex over every Bid2 chunk). Added so the not-found threshold is calibrated on more than one question.
-- A candidate question about Bid2 **installation** was dropped: the Dell quote (Dell_Laptop_Specs p.2) lists "Factory Install" SKUs (asset tag, asset report, OS validation). Installation is therefore *not* clearly absent for Bid2, which contradicts the CLAUDE.md ground-truth note "Installation: not mentioned".
+- A candidate question about Bid2 **installation** was dropped: the Dell quote (Dell_Laptop_Specs p.2) lists "Factory Install" SKUs (asset tag, asset report, OS validation). Installation is therefore *not* clearly absent for Bid2, which contradicts the initial ground-truth note "Installation: not mentioned".

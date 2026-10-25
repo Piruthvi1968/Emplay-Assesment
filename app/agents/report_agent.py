@@ -11,9 +11,17 @@ from datetime import UTC, datetime
 from pydantic import BaseModel
 
 from app.agents.base import AgentContext, agent_node
-from app.agents.evidence import NOT_FOUND, CitedQuote, number_evidence, quote_supported, to_source
+from app.agents.evidence import (
+    NOT_FOUND,
+    CitedQuote,
+    evidence_header,
+    number_evidence,
+    quote_supported,
+    to_source,
+)
 from app.agents.prompts import ANSWER_PROMPT, ANSWER_SYSTEM, SUMMARY_PROMPT, SUMMARY_SYSTEM
 from app.agents.state import BidState
+from app.agents.validator_agent import key_facts, ungrounded_facts
 from app.config import Settings
 from app.llm_client import LLM, LLMError
 from app.models import (
@@ -30,6 +38,7 @@ from app.models import (
 from app.search.engine import SearchEngine, chunk_body
 
 _MARKER = re.compile(r"\[(\d+)\]")
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+|\n+")
 
 
 class DraftPart(BaseModel):
@@ -104,8 +113,35 @@ def _resolve(
         answer=re.sub(r"\s+([.,;:])", r"\1", _MARKER.sub(remap, draft.answer)).strip(),
         parts=parts,
         citations=[sources[n] for n in used],
+        warnings=answer_warnings(draft.answer, quotes, by_number, renumber),
         run_id=run_id,
     )
+
+
+def answer_warnings(
+    answer: str, quotes: dict[int, str], by_number: dict[int, SearchHit], renumber: dict[int, int]
+) -> list[str]:
+    """Deterministic checks of a Q&A answer (no LLM call): every quote must be in its passage, and the key facts
+    of each sentence must be in the passages it cites (a sentence without a marker: in any passage the answer cites).
+    """
+    warnings = [
+        f"[{renumber[n]}] quote is not in the cited passage; the closest line is shown instead"
+        for n, quote in quotes.items()
+        if n in renumber and not quote_supported(quote, chunk_body(by_number[n].chunk))
+    ]
+    seen = {n: f"{evidence_header(by_number[n].chunk)}\n{chunk_body(by_number[n].chunk)}" for n in renumber}
+    for sentence in _SENTENCE_END.split(answer):
+        claim = _MARKER.sub("", sentence).strip()
+        if not key_facts(claim):
+            continue
+        cited = [n for n in dict.fromkeys(map(int, _MARKER.findall(sentence))) if n in seen]
+        missing = ungrounded_facts(claim, [seen[n] for n in cited or seen])
+        if missing and cited:
+            refs = "".join(f"[{renumber[n]}]" for n in cited)
+            warnings.append(f"{', '.join(missing)} not found in the cited passage {refs}")
+        elif missing:
+            warnings.append(f"{', '.join(missing)} not found in any cited passage")
+    return warnings
 
 
 def with_verified_quotes(result: FieldResult, engine: SearchEngine) -> FieldResult:
@@ -145,9 +181,22 @@ class ReportAgent:
 
     @agent_node("qa_answer")
     def answer(self, state: BidState) -> dict:
+        errors = state.get("errors", [])
+        if errors and not any(sub.hits for sub in state.get("qa_evidence", [])):
+            answer = f"The documents could not be searched, so there is no answer ({errors[-1]}). Please try again."
+            response = QAResponse(
+                question=state["question"],
+                intent=state["plan"].intent,
+                answer=answer,
+                warnings=errors,
+                run_id=state["run_id"],
+            )
+            return {"final_output": response, "follow_ups": []}
         response, follow_ups = answer_question(
             self.ctx.llm, state["question"], state["plan"], state["qa_evidence"], state["run_id"]
         )
+        if errors:  # e.g. a failed follow-up search: answered from the first round's evidence
+            response = response.model_copy(update={"warnings": [*response.warnings, *errors]})
         if follow_ups and state.get("qa_round", 0) < self.ctx.settings.agents.qa_follow_up_rounds:
             self.ctx.trace.log("qa_answer", "decision", follow_ups=follow_ups)
             return {"follow_ups": follow_ups}

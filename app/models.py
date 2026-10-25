@@ -177,4 +177,5 @@ class QAResponse(BaseModel):
     answer: str
     parts: list[AnswerPart] = Field(default_factory=list)
     citations: list[Source] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)  # quote and claim checks that did not pass
     run_id: str

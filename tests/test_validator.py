@@ -87,6 +87,11 @@ def test_phone_matches_with_other_punctuation() -> None:
     assert ungrounded_facts("Call 410-260-7533", ["Phone: 410.260.9999"]) == ["410-260-7533"]
 
 
+def test_plain_numbers_match_on_digit_boundaries() -> None:
+    assert ungrounded_facts("Due June 27; delivery in 45 days", ["Due 27-JUN-2024, 45-day delivery"]) == []
+    assert ungrounded_facts("delivery in 45 days", ["delivery in 450 days"]) == ["45"]
+
+
 def test_missing_id_is_reported() -> None:
     assert ungrounded_facts(["210-BLYZ", "WD22TB4"], ["Base 210-BLYZ laptop"]) == ["WD22TB4"]
     # whole-token match: '210-BLY' is not grounded by '210-BLYZ'

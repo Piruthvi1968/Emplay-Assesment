@@ -41,11 +41,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Default: search.default_mode in config.yaml",
     )
 
-    sub.add_parser("eval", help="Retrieval evaluation -> eval/report.md")
+    p = sub.add_parser("eval", help="Retrieval evaluation -> eval/report.md")
+    p.add_argument("--min-mrr", type=float, help="Exit 1 if hybrid_rerank MRR is below this (CI gate)")
 
     p = sub.add_parser("serve", help="Start the FastAPI server")
     p.add_argument("--host", default="0.0.0.0")
     p.add_argument("--port", type=int, default=8000)
+
+    p = sub.add_parser("compare", help="Side-by-side report of the extracted bids -> outputs/comparison.md")
+    p.add_argument("--bid", dest="bids", action="append", help="Bid id to include (repeatable; default: all)")
+
+    p = sub.add_parser("ui", help="Start the web UI (Streamlit); needs the API from 'serve'")
+    p.add_argument("--port", type=int, default=8501)
     return parser
 
 
@@ -102,6 +109,8 @@ def cmd_ask(args: argparse.Namespace) -> int:
     for i, src in enumerate(response.citations, start=1):
         where = f"p.{src.page}" if src.page is not None else (src.section or "")
         print(f'[{i}] {src.file} {where}\n    "{src.quote[:200]}"')
+    for warning in response.warnings:
+        print(f"check: {warning}")
     calls = [e["llm"] for e in trace.events if e["step"] == "llm_call"]
     print(
         f"\nLLM calls: {len(calls)}, tokens in/out: {sum(c['in_tokens'] for c in calls)}/"
@@ -133,7 +142,7 @@ def cmd_extract(args: argparse.Namespace) -> int:
 def cmd_eval(args: argparse.Namespace) -> int:
     from eval.run_eval import main as run_eval
 
-    return run_eval()
+    return run_eval(min_mrr=args.min_mrr)
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -141,6 +150,23 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     uvicorn.run("app.api.server:app", host=args.host, port=args.port)
     return 0
+
+
+def cmd_compare(args: argparse.Namespace) -> int:
+    from app.comparison import write_comparison
+    from app.config import get_settings
+
+    path = write_comparison(get_settings().paths.outputs_dir, args.bids)
+    print(f"comparison written to {path}")
+    return 0
+
+
+def cmd_ui(args: argparse.Namespace) -> int:
+    import subprocess
+
+    script = Path(__file__).parent / "app" / "ui" / "streamlit_app.py"
+    cmd = [sys.executable, "-m", "streamlit", "run", str(script), "--server.port", str(args.port)]
+    return subprocess.call([*cmd, "--browser.gatherUsageStats", "false"])
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -158,6 +184,8 @@ def main(argv: list[str] | None = None) -> int:
         "search": cmd_search,
         "eval": cmd_eval,
         "serve": cmd_serve,
+        "compare": cmd_compare,
+        "ui": cmd_ui,
     }
     return commands[args.command](args)
 
